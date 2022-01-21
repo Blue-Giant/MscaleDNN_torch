@@ -90,19 +90,20 @@ class DenseNet(tn.Module):
         self.dense_layers = tn.ModuleList()
 
         if str.lower(self.name2Model) == 'fourier_dnn':
-            input_layer = tn.Linear(in_features=indim, out_features=hidden_units[0])
+            input_layer = tn.Linear(in_features=indim, out_features=hidden_units[0], bias=False)
             tn.init.xavier_normal_(input_layer.weight)
-            tn.init.uniform_(input_layer.bias, 0, 1)
             self.dense_layers.append(input_layer)
 
             for i_layer in range(len(hidden_units)-1):
                 if i_layer == 0:
                     hidden_layer = tn.Linear(in_features=2 * hidden_units[i_layer],
-                                             out_features=hidden_units[i_layer+1], bias=False)
+                                             out_features=hidden_units[i_layer+1])
                     tn.init.xavier_normal_(hidden_layer.weight)
+                    tn.init.uniform_(hidden_layer.bias, -1, 1)
                 else:
                     hidden_layer = tn.Linear(in_features=hidden_units[i_layer], out_features=hidden_units[i_layer+1])
                     tn.init.xavier_normal_(hidden_layer.weight)
+                    tn.init.uniform_(hidden_layer.bias, -1, 1)
                 self.dense_layers.append(hidden_layer)
 
             out_layer = tn.Linear(in_features=hidden_units[-1], out_features=outdim)
@@ -551,16 +552,16 @@ class Dense_FourierNet(tn.Module):
             if i_layer == 0:
                 hidden_layer = tn.Linear(in_features=2 * hidden_units[i_layer], out_features=hidden_units[i_layer+1])
                 tn.init.xavier_normal_(hidden_layer.weight)
-                tn.init.uniform_(hidden_layer.bias, 0, 1)
+                tn.init.uniform_(hidden_layer.bias, -1, 1)
             else:
                 hidden_layer = tn.Linear(in_features=hidden_units[i_layer], out_features=hidden_units[i_layer+1])
                 tn.init.xavier_normal_(hidden_layer.weight)
-                tn.init.uniform_(hidden_layer.bias, 0, 1)
+                tn.init.uniform_(hidden_layer.bias, -1, 1)
             self.dense_layers.append(hidden_layer)
 
         out_layer = tn.Linear(in_features=hidden_units[-1], out_features=outdim)
         tn.init.xavier_normal_(out_layer.weight)
-        tn.init.uniform_(out_layer.bias, 0, 1)
+        tn.init.uniform_(out_layer.bias, -1, 1)
         self.dense_layers.append(out_layer)
 
     def get_regular_sum2WB(self, regular_model='L2'):
@@ -623,21 +624,35 @@ class Dense_FourierNet(tn.Module):
 # This is an example for using the above module
 class DNN(tn.Module):
     def __init__(self, dim_in=2, dim_out=1, hidden_layers=None, name2Model='DNN', actName_in='tanh',
-                 actName_hidden='tanh', actName_out='linear'):
+                 actName_hidden='tanh', actName_out='linear', use_gpu=False, no2gpu=0):
         super(DNN, self).__init__()
+        self.name2Model = name2Model
+        self.dim_in = dim_in
+        self.dim_out = dim_out
         if name2Model == 'DNN':
             self.DNN = Pure_DenseNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
                                      actName2in=actName_in, actName=actName_hidden, actName2out=actName_out)
         elif name2Model == 'Scale_DNN':
             self.DNN = Dense_ScaleNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
-                                      actName2in=actName_in, actName=actName_hidden, actName2out=actName_out)
+                                      actName2in=actName_in, actName=actName_hidden, actName2out=actName_out,
+                                      to_gpu=use_gpu, gpu_no=no2gpu)
         elif name2Model == 'Fourier_DNN':
             self.DNN = Dense_FourierNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
-                                        actName2in=actName_in, actName=actName_hidden, actName2out=actName_out)
+                                        actName2in=actName_in, actName=actName_hidden, actName2out=actName_out,
+                                        to_gpu=use_gpu, gpu_no=no2gpu)
+        else:
+            self.DNN = DenseNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
+                                actName2in=actName_in, actName=actName_hidden, actName2out=actName_out,
+                                to_gpu=use_gpu, gpu_no=no2gpu)
 
     def forward(self, x_input, freq=None):
         out = self.DNN(x_input, scale=freq)
         return out
+
+    def get_sum2wB(self):
+        if self.name2Model == 'DNN' or self.name2Model == 'Scale_DNN' or self.name2Model == 'Fourier_DNN':
+            sum2WB = self.DNN.get_regular_sum2WB()
+        return sum2WB
 
     def cal_l2loss(self, x_input=None, freq=None, y_input=None):
         out = self.DNN(x_input, scale=freq)
@@ -647,48 +662,22 @@ class DNN(tn.Module):
 
 
 def test_DNN():
-    dim_in = 2
-    dim_out = 1
-    hidden_list = (4, 8, 10, 10, 20)
-    freq = np.array([1, 2, 3, 4])
-    # model_name = 'DNN'
-    # model_name = 'Scale_DNN'
-    model_name = 'Fourier_DNN'
-
-    model = DNN(dim_in=dim_in, dim_out=dim_out, hidden_layers=hidden_list, name2Model=model_name, actName_in='relu',
-                actName_hidden='tanh')
-    print(model)
-
-    x_in = torch.Tensor(10, dim_in)
-    out2dnn = model(x_in, freq=freq)
-    temp = model.parameters()
-    print(temp)
-
-    # 查看参数名称和参数
-    for name, param in model.named_parameters():
-        print('name of param:', name)
-        print('param:', param)
-        print('gradient:', param.requires_grad)
-        # param.requires_grad = False
-    # print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$djsfjsdhfhjksdfsdf$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-    # for param in model.parameters():
-    #     print(param.requires_grad)
-    # print('*********************')
-
-
-if __name__ == "__main__":
     batch_size = 10
     dim_in = 2
     dim_out = 1
-    hidden_list = (10, 8, 10, 10, 20)
+    hidden_list = (10, 20, 10, 10, 20)
     freq = np.array([1, 2, 3, 4], dtype=np.float32)
-    model_name = 'DNN'
-    # model_name = 'Fourier_DNN'
+    # model_name = 'DNN'
+    # model_name = 'Scale_DNN'
+    model_name = 'Fourier_DNN'
     init_lr = 0.01
     max_it = 10000
+    with_gpu = True
 
     model = DNN(dim_in=dim_in, dim_out=dim_out, hidden_layers=hidden_list, name2Model=model_name, actName_in='tanh',
-                actName_hidden='tanh')
+                actName_hidden='tanh', use_gpu=with_gpu, no2gpu=0)
+    if with_gpu:
+        model = model.cuda(device='cuda:'+str(0))
 
     params2Net = model.DNN.parameters()
 
@@ -696,7 +685,7 @@ if __name__ == "__main__":
     # optimizer = torch.optim.SGD(params2Net, lr=init_lr)                     # SGD
     # optimizer = torch.optim.SGD(params2Net, lr=init_lr, momentum=0.8)       # momentum
     # optimizer = torch.optim.RMSprop(params2Net, lr=init_lr, alpha=0.95)     # RMSProp
-    optimizer = torch.optim.Adam(params2Net, lr=init_lr)                      # Adam
+    optimizer = torch.optim.Adam(params2Net, lr=init_lr)  # Adam
 
     # 定义更新学习率的方法
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
@@ -709,15 +698,18 @@ if __name__ == "__main__":
         x = np.random.rand(batch_size, dim_in)
         x = x.astype(dtype=np.float32)
         torch_x = torch.from_numpy(x)
-
         y = np.reshape(np.sin(x[:, 0] * x[:, 0] + x[:, 1] * x[:, 1]), newshape=(-1, 1))
         torch_y = torch.from_numpy(y)
+        if with_gpu:
+            torch_x = torch_x.cuda(device='cuda:'+str(0))
+            torch_y = torch_y.cuda(device='cuda:' + str(0))
 
         loss, prediction = model.cal_l2loss(x_input=torch_x, freq=freq, y_input=torch_y)
+        sum2wb = model.get_sum2wB()
 
-        optimizer.zero_grad()           # 求导前先清零, 只要在下一次求导前清零即可
-        loss.backward()                 # 求偏导
-        optimizer.step()                # 更新参数
+        optimizer.zero_grad()  # 求导前先清零, 只要在下一次求导前清零即可
+        loss.backward()  # 求偏导
+        optimizer.step()  # 更新参数
         scheduler.step()
 
         if i_epoch % 100 == 0:
@@ -738,4 +730,8 @@ if __name__ == "__main__":
     # plt.cla()
     # plt.plot(x[:, 0], x[:, 1], y, 'b*')
     # plt.show()
+
+
+if __name__ == "__main__":
+    test_DNN()
 
