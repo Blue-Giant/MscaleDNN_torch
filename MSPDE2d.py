@@ -313,9 +313,9 @@ def solve_Multiscale_PDE(R):
         loss_bd_all.append(loss_bd.item())
         loss_all.append(loss.item())
 
-        optimizer.zero_grad()  # 求导前先清零, 只要在下一次求导前清零即可
-        loss.backward()        # 对loss关于Ws和Bs求偏导
-        optimizer.step()       # 更新参数Ws和Bs
+        optimizer.zero_grad()               # 求导前先清零, 只要在下一次求导前清零即可
+        loss.backward()                     # 对loss关于Ws和Bs求偏导
+        optimizer.step()                    # 更新参数Ws和Bs
         scheduler.step()
 
         if R['PDE_type'] == 'pLaplace_implicit':
@@ -326,31 +326,32 @@ def solve_Multiscale_PDE(R):
                             torch.reshape(xy_it_batch[:, 1], shape=[-1, 1]))
             train_mse = torch.mean(torch.square(UNN2train - Uexact2train))
             train_rel = train_mse / torch.mean(torch.square(Uexact2train))
-        train_mse_all.append(train_mse)
-        train_rel_all.append(train_rel)
+
+        train_mse_all.append(train_mse.item())
+        train_rel_all.append(train_rel.item())
+
         if i_epoch % 1000 == 0:
-            pwb = 0.0
             run_times = time.time() - t0
             tmp_lr = optimizer.param_groups[0]['lr']
             DNN_tools.print_and_log_train_one_epoch(
-                i_epoch, run_times, tmp_lr, temp_penalty_bd, pwb, loss, loss_bd, loss, train_mse, train_rel,
-                log_out=log_fileout)
+                i_epoch, run_times, tmp_lr, temp_penalty_bd, PWB, loss_it.item(), loss_bd.item(), loss.item(),
+                train_mse.item(), train_rel.item(), log_out=log_fileout)
 
             test_epoch.append(i_epoch / 1000)
             if R['PDE_type'] == 'pLaplace_implicit':
                 unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
-                utrue2test = u_true.astype(np.float32)
+                utrue2test = torch.from_numpy(u_true.astype(np.float32))
             else:
                 unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
-                utrue2test = u_true(torch.reshape(test_xy_bach[:, 0], shape=[-1, 1]),
-                                    torch.reshape(test_xy_bach[:, 1], newshape=[-1, 1]))
+                utrue2test = u_true(torch.reshape(test_xy_torch[:, 0], shape=[-1, 1]),
+                                    torch.reshape(test_xy_torch[:, 1], shape=[-1, 1]))
 
-            point_square_error = np.square(utrue2test - unn2test.detach().numpy())
-            test_mse = np.mean(point_square_error)
-            test_rel = test_mse / np.mean(np.square(utrue2test))
-            test_mse_all.append(test_mse)
-            test_rel_all.append(test_rel)
-            DNN_tools.print_and_log_test_one_epoch(test_mse, test_rel, log_out=log_fileout)
+            point_square_error = torch.square(utrue2test - unn2test)
+            test_mse = torch.mean(point_square_error)
+            test_rel = test_mse / torch.mean(torch.square(utrue2test))
+            test_mse_all.append(test_mse.item())
+            test_rel_all.append(test_rel.item())
+            DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
 
     # ------------------- save the testing results into mat file and plot them -------------------------
     saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'],
