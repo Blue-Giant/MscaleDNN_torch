@@ -1,39 +1,31 @@
 """
 @author: LXA
  Date: 2021 年 11 月 11 日
+ Modifying on 2022 年 9月 2 日 ~~~~ 2022 年 9月 12 日
 """
 import os
 import sys
 import torch
 import torch.nn as tn
-import torch.nn.functional as tnf
 import numpy as np
 import matplotlib
 import platform
 import shutil
-import DNN_data
+import dataUtilizer2torch
 import time
 import DNN_base
 import DNN_tools
 import DNN_Log_Print
 import General_Laplace
 import MS_LaplaceEqs
-import MS_BoltzmannEqs
-import MS_ConvectionEqs
-import random2pLaplace
 import plotData
 import saveData
-
-Xi1 = [-0.25, 0.25]
-Xi2 = [-0.3, 0.3]
-num2sun_term = 2
-Alpha = 1.2
 
 
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=2, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='tanh',
                  name2actHidden='tanh', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None):
+                 factor2freq=None, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         self.input_dim = input_dim
         self.out_dim = out_dim
@@ -48,33 +40,49 @@ class MscaleDNN(tn.Module):
         if Model_name == 'Fourier_DNN':
             self.DNN = DNN_base.Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                  name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                                 actName2out=name2actOut, type2float=type2numeric)
+                                                 actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
+                                                 gpu_no=No2GPU)
         elif Model_name == 'Scale_DNN':
             self.DNN = DNN_base.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                               actName2out=name2actOut, type2float=type2numeric)
+                                               actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
+                                               gpu_no=No2GPU)
         else:
             self.DNN = DNN_base.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                               name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                              actName2out=name2actOut, type2float=type2numeric)
+                                              actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
+                                              gpu_no=No2GPU)
+
+        if type2numeric == 'float32':
+            self.float_type = torch.float32
+        elif type2numeric == 'float64':
+            self.float_type = torch.float64
+        elif type2numeric == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = use_gpu
+        if use_gpu:
+            self.opt2device = 'cuda:' + str(No2GPU)
+        else:
+            self.opt2device = 'cpu'
 
     def loss_it2Laplace(self, X=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
         assert (X is not None)
         assert (fside is not None)
 
-        shape2X = np.shape(X)
+        shape2X = X.shape
         lenght2X_shape = len(shape2X)
         assert (lenght2X_shape == 2)
         assert (shape2X[-1] == 1)
 
         if if_lambda2fside:
-            force_side = torch.from_numpy(fside(X))
+            force_side = fside(X)
         else:
-            force_side = torch.from_numpy(fside)
-        X_torch = torch.from_numpy(X)
-        X_torch.requires_grad_(True)
-        UNN = self.DNN(X_torch, scale=self.factor2freq)
-        grad2UNNx = torch.autograd.grad(UNN, X_torch, grad_outputs=torch.ones(X_torch.shape),
+            force_side = fside
+
+        # cuda_one = torch.ones_like(X)
+        UNN = self.DNN(X, scale=self.factor2freq)
+        grad2UNNx = torch.autograd.grad(UNN, X, grad_outputs=torch.ones_like(X),
                                         create_graph=True, retain_graph=True)
         dUNN = grad2UNNx[0]
 
@@ -84,7 +92,7 @@ class MscaleDNN(tn.Module):
             loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
             loss_it = torch.mean(loss_it_ritz)
         elif str.lower(loss_type) == 'l2_loss':
-            grad2UNNxx = torch.autograd.grad(dUNN, X_torch, grad_outputs=torch.ones(X_torch.shape),
+            grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones(X.shape),
                                              create_graph=True, retain_graph=True)
             dUNNxx = grad2UNNxx[0]
             # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
@@ -97,18 +105,17 @@ class MscaleDNN(tn.Module):
         assert (X_bd is not None)
         assert (Ubd_exact is not None)
 
-        shape2X = np.shape(X_bd)
+        shape2X = X_bd.shape
         lenght2X_shape = len(shape2X)
         assert (lenght2X_shape == 2)
         assert (shape2X[-1] == 1)
 
         if if_lambda2Ubd:
-            Ubd = torch.from_numpy(Ubd_exact(X_bd))
+            Ubd = Ubd_exact(X_bd)
         else:
-            Ubd = torch.from_numpy(Ubd_exact)
+            Ubd = Ubd_exact
 
-        X_bd_torch = torch.from_numpy(X_bd)
-        UNN_bd = self.DNN(X_bd_torch, scale=self.factor2freq)
+        UNN_bd = self.DNN(X_bd, scale=self.factor2freq)
         loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
         loss_bd = torch.mean(loss_bd_square)
         return loss_bd
@@ -119,13 +126,12 @@ class MscaleDNN(tn.Module):
 
     def evaluate_MscaleDNN(self, X_points=None):
         assert (X_points is not None)
-        shape2X = np.shape(X_points)
+        shape2X = X_points.shape
         lenght2X_shape = len(shape2X)
         assert (lenght2X_shape == 2)
         assert (shape2X[-1] == 1)
 
-        X_torch = torch.from_numpy(X_points)
-        UNN = self.DNN(X_torch, scale=self.factor2freq)
+        UNN = self.DNN(X_points, scale=self.factor2freq)
         return UNN
 
 
@@ -142,10 +148,8 @@ def solve_Multiscale_PDE(R):
     batchsize_bd = R['batch_size2boundary']
 
     bd_penalty_init = R['init_boundary_penalty']  # Regularization parameter for boundary conditions
-    penalty2WB = R['penalty2weight_biases']  # Regularization parameter for weights and biases
-    lr_decay = R['learning_rate_decay']
-    learning_rate = R['learning_rate']
-    act_func = R['name2act_hidden']
+    penalty2WB = R['penalty2weight_biases']       # Regularization parameter for weights and biases
+    init_lr = R['learning_rate']
 
     # ------- set the problem --------
     region_l = 0.0
@@ -157,56 +161,40 @@ def solve_Multiscale_PDE(R):
         f, utrue, uleft, uright = General_Laplace.get_infos2Laplace_1D(
             input_dim=R['input_dim'], out_dim=R['output_dim'], intervalL=region_l, intervalR=region_r, equa_name=R['equa_name'])
     elif R['PDE_type'] == 'pLaplace':
-        # 求解如下方程, A_eps(x) 震荡的比较厉害，具有多个尺度
-        #       d      ****         d         ****
-        #   -  ----   |  A_eps(x)* ---- u_eps(x) |  =f(x), x \in R^n
-        #       dx     ****         dx        ****
-        # 问题区域，每个方向设置为一样的长度。等网格划分，对于二维是方形区域
         p_index = R['order2pLaplace_operator']
         epsilon = R['epsilon']
         region_l = 0.0
         region_r = 1.0
         if R['equa_name'] == 'multi_scale':
             utrue, f, A_eps, uleft, uright = MS_LaplaceEqs.get_infos2pLaplace1D(
-                in_dim=R['input_dim'], out_dim=R['output_dim'], intervalL=region_l, intervalR=region_r, index2p=p_index, eps=epsilon)
+                in_dim=R['input_dim'], out_dim=R['output_dim'], intervalL=region_l, intervalR=region_r,
+                index2p=p_index, eps=epsilon)
         elif R['equa_name'] == '3scale2':
             epsilon2 = 0.01
             utrue, f, A_eps, uleft, uright = MS_LaplaceEqs.get_infos2pLaplace1D_3scale(
-                in_dim=R['input_dim'], out_dim=R['output_dim'], intervalL=region_l, intervalR=region_r, index2p=p_index, eps1=epsilon,
+                in_dim=R['input_dim'], out_dim=R['output_dim'], intervalL=region_l, intervalR=region_r,
+                index2p=p_index, eps1=epsilon,
                 eps2=epsilon2)
-        elif R['equa_name'] == 'rand_ceof':
-            num2sun_term = 2
-            Alpha = 1.2
-            Xi1 = [-0.25, 0.25]
-            Xi2 = [-0.3, 0.3]
-            # Xi1 = np.random.uniform(-0.5, 0.5, num2sun_term)
-            print('Xi1:', Xi1)
-            print('\n')
-            # Xi2 = np.random.uniform(-0.5, 0.5, num2sun_term)
-            print('Xi2:', Xi2)
-            print('\n')
-            uleft, uright = random2pLaplace.random_boundary()
-        elif R['equa_name'] == 'rand_sin_ceof':
-            Xi1=-0.25
-            Xi2=0.25
-            u_true, f, A_eps = random2pLaplace.random_equa2()
-    elif R['PDE_type'] == 'Possion_Boltzmann':
-        # 求解如下方程, A_eps(x) 震荡的比较厉害，具有多个尺度
-        #       d      ****         d         ****
-        #   -  ----   |  A_eps(x)* ---- u_eps(x) | + K(x)u_eps(x) =f(x), x \in R^n
-        #       dx     ****         dx        ****
-        p_index = R['order2pLaplace_operator']
-        epsilon = R['epsilon']
-        region_l = 0.0
-        region_r = 1.0
-        A_eps, kappa, u_true, uleft, uright, f = MS_BoltzmannEqs.get_infos2Boltzmann_1D(
-            in_dim=R['input_dim'], out_dim=R['output_dim'], region_a=region_l, region_b=region_r, index2p=p_index, eps=epsilon,
-            eqs_name=R['equa_name'])
 
     mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
                           Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
                           name2actOut=R['name2act_out'], opt2regular_WB='L0', type2numeric='float32',
-                          factor2freq=R['freq'])
+                          factor2freq=R['freq'], use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
+    if True == R['use_gpu']:
+        mscalednn = mscalednn.cuda(device='cuda:'+str(R['gpuNo']))
+
+    params2Net = mscalednn.DNN.parameters()
+
+    # 定义优化方法，并给定初始学习率
+    # optimizer = torch.optim.SGD(params2Net, lr=init_lr)                     # SGD
+    # optimizer = torch.optim.SGD(params2Net, lr=init_lr, momentum=0.8)       # momentum
+    # optimizer = torch.optim.RMSprop(params2Net, lr=init_lr, alpha=0.95)     # RMSProp
+    optimizer = torch.optim.Adam(params2Net, lr=init_lr)                      # Adam
+
+    # 定义更新学习率的方法
+    # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch+1))
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.995)
 
     t0 = time.time()
     loss_it_all, loss_bd_all, loss_all, train_mse_all, train_rel_all = [], [], [], [], []  # 空列表, 使用 append() 添加元素
@@ -215,23 +203,17 @@ def solve_Multiscale_PDE(R):
     test_batch_size = 1000
     test_x_bach = np.reshape(np.linspace(region_l, region_r, num=test_batch_size), [-1, 1])
     test_x_bach = test_x_bach.astype(np.float32)
-
-    params2Net = mscalednn.DNN.parameters()
-
-    # 定义优化方法，并给定初始学习率
-    # optimizer = torch.optim.SGD(params2Net, lr=init_lr)                     # SGD
-    # optimizer = torch.optim.SGD(params2Net, lr=init_lr, momentum=0.8)       # momentum
-    # optimizer = torch.optim.RMSprop(params2Net, lr=init_lr, alpha=0.95)     # RMSProp
-    optimizer = torch.optim.Adam(params2Net, lr=learning_rate)  # Adam
-
-    # 定义更新学习率的方法
-    # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch+1))
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.995)
+    test_x_bach = torch.from_numpy(test_x_bach)
+    if True == R['use_gpu']:
+        test_x_bach = test_x_bach.cuda(device='cuda:' + str(R['gpuNo']))
 
     for i_epoch in range(R['max_epoch'] + 1):
-        x_it_batch = DNN_data.rand_it(batchsize_it, R['input_dim'], region_a=region_l, region_b=region_r)
-        xl_bd_batch, xr_bd_batch = DNN_data.rand_bd_1D(batchsize_bd, R['input_dim'], region_a=region_l, region_b=region_r)
+        x_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_l, region_b=region_r,
+                                                to_torch=True, to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
+                                                use_grad2x=True)
+        xl_bd_batch, xr_bd_batch = dataUtilizer2torch.rand_bd_1D(batchsize_bd, R['input_dim'], region_a=region_l,
+                                                                 region_b=region_r, to_torch=True, to_float=True,
+                                                                 to_cuda=R['use_gpu'], gpu_no=R['gpuNo'])
         if R['activate_penalty2bd_increase'] == 1:
             if i_epoch < int(R['max_epoch'] / 10):
                 temp_penalty_bd = bd_penalty_init
@@ -249,50 +231,68 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_it2Laplace(X=x_it_batch, fside=f, loss_type=R['loss_type'])
+            UNN2train, loss_it = mscalednn.loss_it2Laplace(X=x_it_batch, fside=f, if_lambda2fside=True,
+                                                           loss_type=R['loss_type'])
 
-        loss_bd2left = mscalednn.loss2bd(X_bd=xl_bd_batch, Ubd_exact=uleft, )
-        loss_bd2right = mscalednn.loss2bd(X_bd=xr_bd_batch, Ubd_exact=uright)
+        loss_bd2left = mscalednn.loss2bd(X_bd=xl_bd_batch, Ubd_exact=uleft, if_lambda2Ubd=True)
+        loss_bd2right = mscalednn.loss2bd(X_bd=xr_bd_batch, Ubd_exact=uright, if_lambda2Ubd=True)
         loss_bd = loss_bd2left + loss_bd2right
+        pwb = penalty2WB*mscalednn.get_regularSum2WB()
+        loss = loss_it + temp_penalty_bd*loss_bd + pwb
 
-        loss = loss_it + temp_penalty_bd*loss_bd
-
-        loss_it_all.append(loss_it.item())
-        loss_bd_all.append(loss_bd.item())
-        loss_all.append(loss.item())
+        if True == R['use_gpu']:
+            loss_cpu = loss.cpu()
+            loss2it_cpu = loss_it.cpu()
+            loss2bd_cpu = loss_bd.cpu()
+            loss_all.append(loss_cpu.item())
+            loss_it_all.append(loss2it_cpu.item())
+            loss_bd_all.append(loss2bd_cpu.item())
+        else:
+            loss_all.append(loss.item())
+            loss_it_all.append(loss_it.item())
+            loss_bd_all.append(loss_bd.item())
 
         optimizer.zero_grad()  # 求导前先清零, 只要在下一次求导前清零即可
         loss.backward()        # 对loss关于Ws和Bs求偏导
         optimizer.step()       # 更新参数Ws和Bs
         scheduler.step()
 
-        Uexact = utrue(torch.from_numpy(x_it_batch))
+        Uexact = utrue(x_it_batch)
         train_mse = torch.mean(torch.mul(UNN2train-Uexact, UNN2train-Uexact))
         train_rel = train_mse/torch.mean(torch.mul(Uexact, Uexact))
 
-        train_mse_all.append(train_mse)
-        train_rel_all.append(train_rel)
+        if True == R['use_gpu']:
+            train_mse_all.append(train_mse)
+            train_rel_all.append(train_rel)
+        else:
+            train_mse_all.append(train_mse.item())
+            train_rel_all.append(train_rel.item())
 
         if i_epoch % 1000 == 0:
-            pwb = 0.0
             run_times = time.time() - t0
             tmp_lr = optimizer.param_groups[0]['lr']
             DNN_tools.print_and_log_train_one_epoch(
-                i_epoch, run_times, tmp_lr, temp_penalty_bd, pwb, loss, loss_bd, loss, train_mse.item(),
+                i_epoch, run_times, tmp_lr, temp_penalty_bd, pwb, loss_it, loss_bd, loss, train_mse.item(),
                 train_rel.item(), log_out=log_fileout)
 
             test_epoch.append(i_epoch / 1000)
             unn2test = mscalednn.evaluate_MscaleDNN(X_points=test_x_bach)
-            Uexact2test = utrue(torch.from_numpy(x_it_batch))
+            Uexact2test = utrue(test_x_bach)
 
             point_square_error = torch.mul(Uexact2test - unn2test)
             test_mse = torch.mean(point_square_error)
             test_rel = test_mse/torch.mean(torch.mul(Uexact2test, Uexact2test))
-            test_mse_all.append(test_mse.item())
-            test_rel_all.append(test_rel)
+            if True == R['use_gpu']:
+                test_mse_all.append(test_mse.cpu().item())
+                test_rel_all.append(test_rel.cpu().item())
+            else:
+                test_mse_all.append(test_mse.item())
+                test_rel_all.append(test_rel.item())
             DNN_tools.print_and_log_test_one_epoch(test_mse, test_rel, log_out=log_fileout)
+
     # -----------------------  save training results to mat files, then plot them ---------------------------------
-    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'], outPath=R['FolderName'])
+    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'],
+                                         outPath=R['FolderName'])
     plotData.plotTrain_loss_1act_func(loss_it_all, lossType='loss_it', seedNo=R['seed'], outPath=R['FolderName'])
     plotData.plotTrain_loss_1act_func(loss_bd_all, lossType='loss_bd', seedNo=R['seed'], outPath=R['FolderName'],
                                       yaxis_scale=True)
@@ -303,8 +303,9 @@ def solve_Multiscale_PDE(R):
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
-    saveData.save_2testSolus2mat(Uexact2test.item(), unn2test.item(), actName='utrue', actName1=R['activate_func'], outPath=R['FolderName'])
-    plotData.plot_2solutions2test(Uexact2test.item(), unn2test.item(), coord_points2test=test_x_bach,
+    saveData.save_2testSolus2mat(Uexact2test.detach().item(), unn2test.detach().item(), actName='utrue',
+                                 actName1=R['activate_func'], outPath=R['FolderName'])
+    plotData.plot_2solutions2test(Uexact2test.detach().item(), unn2test.detach().item(), coord_points2test=test_x_bach,
                                   batch_size2test=test_batch_size, seedNo=R['seed'], outPath=R['FolderName'],
                                   subfig_type=R['subfig_type'])
 
@@ -329,7 +330,6 @@ if __name__ == "__main__":
     # ------------------------------------------- 文件保存路径设置 ----------------------------------------
     store_file = 'Laplace1D'
     # store_file = 'pLaplace1D'
-    # store_file = 'Boltzmann1D'
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(BASE_DIR)
     OUT_DIR = os.path.join(BASE_DIR, store_file)
@@ -354,7 +354,8 @@ if __name__ == "__main__":
     # ---------------------------- Setup of laplace equation ------------------------------
     # if the value of step_stop_flag is not 0, it will activate stop condition of step to kill program
     step_stop_flag = input('please input an  integer number to activate step-stop----0:no---!0:yes--:')
-    R['activate_stop'] = int(step_stop_flag)
+    # R['activate_stop'] = int(step_stop_flag)
+    R['activate_stop'] = int(0)
     # if the value of step_stop_flag is not 0, it will activate stop condition of step to kill program
     R['max_epoch'] = 200000
     if 0 != R['activate_stop']:
@@ -376,10 +377,6 @@ if __name__ == "__main__":
         R['equa_name'] = '3scale2'
         # R['equa_name'] = 'rand_ceof'
         # R['equa_name'] = 'rand_sin_ceof'
-    elif store_file == 'Boltzmann1D':
-        R['PDE_type'] = 'Possion_Boltzmann'
-        # R['equa_name'] = 'Boltzmann1'
-        R['equa_name'] = 'Boltzmann2'
 
     if R['PDE_type'] == 'general_Laplace':
         R['epsilon'] = 0.1
@@ -394,13 +391,13 @@ if __name__ == "__main__":
         order = float(order2pLaplace)
         R['order2pLaplace_operator'] = order
 
-    R['input_dim'] = 1  # 输入维数，即问题的维数(几元问题)
-    R['output_dim'] = 1  # 输出维数
+    R['input_dim'] = 1                               # 输入维数，即问题的维数(几元问题)
+    R['output_dim'] = 1                              # 输出维数
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup of DNN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # 训练集的设置(内部和边界)
-    R['batch_size2interior'] = 3000  # 内部训练数据的批大小
-    R['batch_size2boundary'] = 500  # 边界训练数据大小
+    R['batch_size2interior'] = 3000                  # 内部训练数据的批大小
+    R['batch_size2boundary'] = 500                   # 边界训练数据大小
 
     # 装载测试数据模式和画图
     R['plot_ongoing'] = 0
@@ -408,16 +405,16 @@ if __name__ == "__main__":
     R['testData_model'] = 'loadData'
     # R['testData_model'] = 'random_generate'
 
-    # R['loss_type'] = 'L2_loss'                            # PDE变分
-    R['loss_type'] = 'variational_loss'  # PDE变分
+    # R['loss_type'] = 'L2_loss'                     # L2 loss
+    R['loss_type'] = 'variational_loss'              # PDE变分
 
     if R['loss_type'] == 'L2_loss':
-        R['batch_size2interior'] = 15000  # 内部训练数据的批大小
-        R['batch_size2boundary'] = 2500  # 边界训练数据大小
+        R['batch_size2interior'] = 15000             # 内部训练数据的批大小
+        R['batch_size2boundary'] = 2500              # 边界训练数据大小
 
-    R['optimizer_name'] = 'Adam'  # 优化器
-    R['learning_rate'] = 2e-4  # 学习率
-    R['learning_rate_decay'] = 5e-5  # 学习率 decay
+    R['optimizer_name'] = 'Adam'                     # 优化器
+    R['learning_rate'] = 2e-4                        # 学习率
+    R['learning_rate_decay'] = 5e-5                  # 学习率 decay
     R['train_model'] = 'union_training'
     # R['train_model'] = 'group2_training'
     # R['train_model'] = 'group3_training'
@@ -425,14 +422,14 @@ if __name__ == "__main__":
     R['regular_wb_model'] = 'L0'
     # R['regular_wb_model'] = 'L1'
     # R['regular_wb_model'] = 'L2'
-    R['penalty2weight_biases'] = 0.000  # Regularization parameter for weights
-    # R['penalty2weight_biases'] = 0.001                  # Regularization parameter for weights
-    # R['penalty2weight_biases'] = 0.0025                 # Regularization parameter for weights
+    R['penalty2weight_biases'] = 0.000               # Regularization parameter for weights
+    # R['penalty2weight_biases'] = 0.001             # Regularization parameter for weights
+    # R['penalty2weight_biases'] = 0.0025            # Regularization parameter for weights
 
     # 边界的惩罚处理方式,以及边界的惩罚因子
     R['activate_penalty2bd_increase'] = 1
-    # R['init_boundary_penalty'] = 1000                   # Regularization parameter for boundary conditions
-    R['init_boundary_penalty'] = 100  # Regularization parameter for boundary conditions
+    # R['init_boundary_penalty'] = 1000              # Regularization parameter for boundary conditions
+    R['init_boundary_penalty'] = 100                 # Regularization parameter for boundary conditions
 
     # 网络的频率范围设置
     R['freq'] = np.arange(1, 121)
@@ -514,4 +511,6 @@ if __name__ == "__main__":
         R['sfourier'] = 0.5
     else:
         R['sfourier'] = 1.0
+
+    R['use_gpu'] = True
     solve_Multiscale_PDE(R)
