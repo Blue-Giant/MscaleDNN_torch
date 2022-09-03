@@ -1,14 +1,15 @@
 import numpy as np
+import torch
 
 
 def get_infos2Laplace_1D(input_dim=1, out_dim=1, intervalL=0.0, intervalR=1.0, equa_name=None):
     # -uxx = f
     if equa_name == 'PDE1':
         # u=sin(pi*x), f=-pi*pi*sin(pi*x)
-        fside = lambda x: -(np.pi)*(np.pi)*np.sin(np.pi*x)
-        utrue = lambda x: np.sin(np.pi*x)
-        uleft = lambda x: np.sin(np.pi*x)
-        uright = lambda x: np.sin(np.pi*x)
+        fside = lambda x: -(torch.pi)*(torch.pi)*torch.sin(torch.pi*x)
+        utrue = lambda x: torch.sin(torch.pi*x)
+        uleft = lambda x: torch.sin(torch.pi*x)
+        uright = lambda x: torch.sin(torch.pi*x)
     return fside, utrue, uleft, uright
 
 

@@ -352,7 +352,7 @@ class Pure_DenseNet(tn.Module):
         scope2B: the namespace of bias
     """
     def __init__(self, indim=1, outdim=1, hidden_units=None, name2Model='DNN', actName2in='tanh', actName='tanh',
-                 actName2out='linear', scope2W='Weight', scope2B='Bias', type2float='float32'):
+                 actName2out='linear', scope2W='Weight', scope2B='Bias', type2float='float32', to_gpu=False, gpu_no=0):
         super(Pure_DenseNet, self).__init__()
         self.indim = indim
         self.outdim = outdim
@@ -667,9 +667,7 @@ def test_DNN():
     dim_out = 1
     hidden_list = (10, 20, 10, 10, 20)
     freq = np.array([1, 2, 3, 4], dtype=np.float32)
-    # model_name = 'DNN'
-    # model_name = 'Scale_DNN'
-    model_name = 'Fourier_DNN'
+    model_name = 'DNN'
     init_lr = 0.01
     max_it = 10000
     with_gpu = True
