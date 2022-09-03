@@ -17,7 +17,6 @@ import DNN_tools
 import dataUtilizer2torch
 import MS_LaplaceEqs
 import MS_BoltzmannEqs
-import MS_ConvectionEqs
 import General_Laplace
 import Load_data2Mat
 import saveData
@@ -46,8 +45,22 @@ class MscaleDNN(tn.Module):
                 actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
                 to_gpu=use_gpu, gpu_no=No2GPU)
 
+        self.input_dim = input_dim
+        self.out_dim = out_dim
+        self.hidden_layer = hidden_layer
+        self.Model_name = Model_name
+        self.name2actIn = name2actIn
+        self.name2actHidden = name2actHidden
+        self.name2actOut = name2actOut
         self.factor2freq = factor2freq
         self.opt2regular_WB = opt2regular_WB
+
+        if type2numeric == 'float32':
+            self.float_type = torch.float32
+        elif type2numeric == 'float64':
+            self.float_type = torch.float64
+        elif type2numeric == 'float16':
+            self.float_type = torch.float16
 
         self.use_gpu = use_gpu
         if use_gpu:
