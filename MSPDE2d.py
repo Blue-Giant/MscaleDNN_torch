@@ -72,7 +72,8 @@ class MscaleDNN(tn.Module):
             force_side = fside
 
         UNN = self.DNN(XY, scale=self.factor2freq)
-        dUNN = torch.autograd.grad(UNN, XY, grad_outputs=torch.ones_like(XY), create_graph=True, retain_graph=True)[0]
+        grad2UNN = torch.autograd.grad(UNN, XY, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
+        dUNN = grad2UNN[0]
 
         if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
             dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
@@ -201,6 +202,30 @@ def solve_Multiscale_PDE(R):
         A_eps, kappa, u_true, u_left, u_right, u_top, u_bottom, f = MS_BoltzmannEqs.get_infos2Boltzmann_2D(
             equa_name=R['equa_name'], intervalL=region_lb, intervalR=region_rt)
 
+    mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
+                          Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
+                          name2actOut=R['name2act_out'], opt2regular_WB='L0', type2numeric='float32',
+                          factor2freq=R['freq'], use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
+    if True == R['use_gpu']:
+        mscalednn = mscalednn.cuda(device='cuda:'+str(R['gpuNo']))
+
+    params2Net = mscalednn.DNN.parameters()
+
+    # 定义优化方法，并给定初始学习率
+    # optimizer = torch.optim.SGD(params2Net, lr=init_lr)                     # SGD
+    # optimizer = torch.optim.SGD(params2Net, lr=init_lr, momentum=0.8)       # momentum
+    # optimizer = torch.optim.RMSprop(params2Net, lr=init_lr, alpha=0.95)     # RMSProp
+    optimizer = torch.optim.Adam(params2Net, lr=learning_rate)  # Adam
+
+    # 定义更新学习率的方法
+    # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch+1))
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.995)
+
+    loss_it_all, loss_bd_all, loss_all, train_mse_all, train_rel_all = [], [], [], [], []  # 空列表, 使用 append() 添加元素
+    test_mse_all, test_rel_all = [], []
+    test_epoch = []
+
     if R['testData_model'] == 'random_generate':
         # 生成测试数据，用于测试训练后的网络
         test_bach_size = 1600
@@ -209,7 +234,8 @@ def solve_Multiscale_PDE(R):
         # size2test = 70
         # test_bach_size = 10000
         # size2test = 100
-        test_xy_bach = dataUtilizer2torch.rand_it(test_bach_size, R['input_dim'], region_lb, region_rt)
+        test_xy_bach = dataUtilizer2torch.rand_it(test_bach_size, R['input_dim'], region_lb, region_rt, to_torch=False,
+                                                  to_float=True, to_cuda=False, gpu_no=R['gpuNo'])
         saveData.save_testData_or_solus2mat(test_xy_bach, dataName='testXY', outPath=R['FolderName'])
     else:
         if R['PDE_type'] == 'pLaplace_implicit' or R['PDE_type'] == 'pLaplace_explicit':
@@ -241,33 +267,19 @@ def solve_Multiscale_PDE(R):
             size2batch = np.shape(test_xy_bach)[0]
             size2test = int(np.sqrt(size2batch))
 
-    mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
-                          Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
-                          name2actOut=R['name2act_out'], opt2regular_WB='L0', type2numeric='float32',
-                          factor2freq=R['freq'])
-
-    params2Net = mscalednn.DNN.parameters()
-
-    # 定义优化方法，并给定初始学习率
-    # optimizer = torch.optim.SGD(params2Net, lr=init_lr)                     # SGD
-    # optimizer = torch.optim.SGD(params2Net, lr=init_lr, momentum=0.8)       # momentum
-    # optimizer = torch.optim.RMSprop(params2Net, lr=init_lr, alpha=0.95)     # RMSProp
-    optimizer = torch.optim.Adam(params2Net, lr=learning_rate)  # Adam
-
-    # 定义更新学习率的方法
-    # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch+1))
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.995)
-
-    loss_it_all, loss_bd_all, loss_all, train_mse_all, train_rel_all = [], [], [], [], []  # 空列表, 使用 append() 添加元素
-    test_mse_all, test_rel_all = [], []
-    test_epoch = []
+    test_xy_bach = test_xy_bach.astype(np.float32)
+    test_xy_torch = torch.from_numpy(test_xy_bach)
+    if True == R['use_gpu']:
+        test_xy_torch = test_xy_torch.cuda(device='cuda:' + str(R['gpuNo']))
 
     t0 = time.time()
     for i_epoch in range(R['max_epoch'] + 1):
-        xy_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_lb, region_b=region_rt)
+        xy_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_lb, region_b=region_rt,
+                                                 to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
+                                                 use_grad2x=True)
         xl_bd_batch, xr_bd_batch, yb_bd_batch, yt_bd_batch = dataUtilizer2torch.rand_bd_2D(
-            batchsize_bd, R['input_dim'], region_a=region_lb, region_b=region_rt)
+            batchsize_bd, R['input_dim'], region_a=region_lb, region_b=region_rt, to_float=True, to_cuda=R['use_gpu'],
+            gpu_no=R['gpuNo'])
         if R['activate_penalty2bd_increase'] == 1:
             if i_epoch < int(R['max_epoch'] / 10):
                 temp_penalty_bd = bd_penalty_init
@@ -310,10 +322,10 @@ def solve_Multiscale_PDE(R):
             train_mse = torch.tensor([0], dtype=torch.float32)
             train_rel = torch.tensor([0], dtype=torch.float32)
         else:
-            Uexact2train = u_true(np.reshape(xy_it_batch[:, 0], newshape=[-1, 1]),
-                            np.reshape(xy_it_batch[:, 1], newshape=[-1, 1]))
-            train_mse = np.mean(np.square(UNN2train.detach().numpy()) - Uexact2train)
-            train_rel = train_mse / np.mean(np.square(Uexact2train))
+            Uexact2train = u_true(torch.reshape(xy_it_batch[:, 0], shape=[-1, 1]),
+                            torch.reshape(xy_it_batch[:, 1], shape=[-1, 1]))
+            train_mse = torch.mean(torch.square(UNN2train - Uexact2train))
+            train_rel = train_mse / torch.mean(torch.square(Uexact2train))
         train_mse_all.append(train_mse)
         train_rel_all.append(train_rel)
         if i_epoch % 1000 == 0:
@@ -326,14 +338,12 @@ def solve_Multiscale_PDE(R):
 
             test_epoch.append(i_epoch / 1000)
             if R['PDE_type'] == 'pLaplace_implicit':
-                test_xy_bach = test_xy_bach.astype(np.float32)
-                unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_bach)
+                unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
                 utrue2test = u_true.astype(np.float32)
             else:
-                test_xy_bach = test_xy_bach.astype(np.float32)
-                unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_bach)
-                utrue2test = u_true(np.reshape(test_xy_bach[:, 0], newshape=[-1, 1]),
-                                    np.reshape(test_xy_bach[:, 1], newshape=[-1, 1]))
+                unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
+                utrue2test = u_true(torch.reshape(test_xy_bach[:, 0], shape=[-1, 1]),
+                                    torch.reshape(test_xy_bach[:, 1], newshape=[-1, 1]))
 
             point_square_error = np.square(utrue2test - unn2test.detach().numpy())
             test_mse = np.mean(point_square_error)
@@ -389,7 +399,6 @@ if __name__ == "__main__":
     store_file = 'Laplace2D'
     # store_file = 'pLaplace2D'
     # store_file = 'Boltzmann2D'
-    # store_file = 'Convection2D'
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(BASE_DIR)
     OUT_DIR = os.path.join(BASE_DIR, store_file)
@@ -498,11 +507,11 @@ if __name__ == "__main__":
         R['batch_size2boundary'] = 500  # 边界训练数据的批大小
 
     # 装载测试数据模式
-    R['testData_model'] = 'loadData'
-    # R['testData_model'] = 'random_generate'
+    # R['testData_model'] = 'loadData'
+    R['testData_model'] = 'random_generate'
 
     # R['loss_type'] = 'L2_loss'                             # loss类型:L2 loss
-    R['loss_type'] = 'variational_loss'  # loss类型:PDE变分
+    R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
     # R['loss_type'] = 'lncosh_loss2Ritz'
     R['lambda2lncosh'] = 50.0
 
@@ -531,10 +540,10 @@ if __name__ == "__main__":
     R['freq'] = np.random.normal(0, 100, 100)
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
-    R['model2NN'] = 'DNN'
+    # R['model2NN'] = 'DNN'
     # R['model2NN'] = 'Scale_DNN'
     # R['model2NN'] = 'Adapt_scale_DNN'
-    # R['model2NN'] = 'Fourier_DNN'
+    R['model2NN'] = 'Fourier_DNN'
     # R['model2NN'] = 'Wavelet_DNN'
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -590,6 +599,8 @@ if __name__ == "__main__":
         # R['freq'] = np.concatenate(([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], np.arange(1, 30-9)), axis=0)
         R['freq'] = np.concatenate(([0.25, 0.5, 0.6, 0.7, 0.8, 0.9], np.arange(1, 100 - 6)), axis=0)
         # R['freq'] = np.arange(1, 100)
+
+    R['use_gpu'] = True
 
     solve_Multiscale_PDE(R)
 
