@@ -368,22 +368,23 @@ def solve_Multiscale_PDE(R):
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
-    saveData.save_2testSolus2mat(utrue2test, unn2test.detach().numpy(), actName='utrue', actName1=R['activate_func'],
-                                 outPath=R['FolderName'])
+    saveData.save_2testSolus2mat(utrue2test.detach().numpy(), unn2test.detach().numpy(), actName='utrue',
+                                 actName1=R['activate_func'], outPath=R['FolderName'])
 
-    plotData.plot_Hot_solution2test(utrue2test, size_vec2mat=size2test, actName='Utrue', seedNo=R['seed'],
-                                    outPath=R['FolderName'])
-    plotData.plot_Hot_solution2test(unn2test.detach().numpy(), size_vec2mat=size2test, actName=R['activate_func'], seedNo=R['seed'],
-                                    outPath=R['FolderName'])
+    plotData.plot_Hot_solution2test(utrue2test.detach().numpy(), size_vec2mat=size2test, actName='Utrue',
+                                    seedNo=R['seed'], outPath=R['FolderName'])
+    plotData.plot_Hot_solution2test(unn2test.detach().numpy(), size_vec2mat=size2test, actName=R['activate_func'],
+                                    seedNo=R['seed'], outPath=R['FolderName'])
 
     saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
     plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['activate_func'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error, actName=R['activate_func'], outPath=R['FolderName'])
+    saveData.save_test_point_wise_err2mat(point_square_error.detach().numpy(), actName=R['activate_func'],
+                                          outPath=R['FolderName'])
 
-    plotData.plot_Hot_point_wise_err(point_square_error, size_vec2mat=size2test, actName=R['activate_func'],
-                                     seedNo=R['seed'], outPath=R['FolderName'])
+    plotData.plot_Hot_point_wise_err(point_square_error.detach().numpy(), size_vec2mat=size2test,
+                                     actName=R['activate_func'], seedNo=R['seed'], outPath=R['FolderName'])
 
 
 if __name__ == "__main__":
