@@ -68,24 +68,25 @@ class MscaleDNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_it2Laplace(self, XY=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
-        assert (XY is not None)
+    def loss_it2Laplace(self, XYZ=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
+        assert (XYZ is not None)
         assert (fside is not None)
 
-        shape2XY = XY.shape
-        lenght2XY_shape = len(shape2XY)
-        assert (lenght2XY_shape == 2)
-        assert (shape2XY[-1] == 2)
-        X = torch.reshape(XY[:, 0], shape=[-1, 1])
-        Y = torch.reshape(XY[:, 1], shape=[-1, 1])
+        shape2XYZ = XYZ.shape
+        lenght2XYZ_shape = len(shape2XYZ)
+        assert (lenght2XYZ_shape == 2)
+        assert (shape2XYZ[-1] == 3)
+        X = torch.reshape(XYZ[:, 0], shape=[-1, 1])
+        Y = torch.reshape(XYZ[:, 1], shape=[-1, 1])
+        Z = torch.reshape(XYZ[:, 2], shape=[-1, 1])
 
         if if_lambda2fside:
-            force_side = fside(X, Y)
+            force_side = fside(X, Y, Z)
         else:
             force_side = fside
 
-        UNN = self.DNN(XY, scale=self.factor2freq)
-        grad2UNN = torch.autograd.grad(UNN, XY, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
+        UNN = self.DNN(XYZ, scale=self.factor2freq)
+        grad2UNN = torch.autograd.grad(UNN, XYZ, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
         dUNN = grad2UNN[0]
 
         if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
@@ -93,39 +94,44 @@ class MscaleDNN(tn.Module):
             loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
             loss_it = torch.mean(loss_it_ritz)
         elif str.lower(loss_type) == 'l2_loss':
-            dUNN_x = torch.autograd.grad(dUNN[:, 0], XY, grad_outputs=torch.ones_like(XY),
-                                         create_graph=True, retain_graph=True)[0]
-            dUNN_y = torch.autograd.grad(dUNN[:, 1], XY, grad_outputs=torch.ones_like(XY),
-                                         create_graph=True, retain_graph=True)[0]
-            dUNNxxy = torch.autograd.grad(dUNN_x[:, 0], XY, grad_outputs=torch.ones_like(XY),
-                                          create_graph=True, retain_graph=True)[0]
-            dUNNyxy = torch.autograd.grad(dUNN_y[:, 1], XY, grad_outputs=torch.ones_like(XY),
-                                          create_graph=True, retain_graph=True)[0]
-            dUNNxx = dUNNxxy[:, 0]
-            dUNNyy = dUNNyxy[:, 1]
-            # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
-            loss_it_L2 = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
+            dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
+            dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
+            dUNN2z = torch.reshape(dUNN[:, 2], shape=[-1, 1])
+
+            dUNNxxyz = torch.autograd.grad(dUNN2x, XYZ, grad_outputs=torch.ones_like(X),
+                                           create_graph=True, retain_graph=True)[0]
+            dUNNyxyz = torch.autograd.grad(dUNN2y, XYZ, grad_outputs=torch.ones_like(X),
+                                           create_graph=True, retain_graph=True)[0]
+            dUNNzxyz = torch.autograd.grad(dUNN2z, XYZ, grad_outputs=torch.ones_like(X),
+                                           create_graph=True, retain_graph=True)[0]
+            dUNNxx = torch.reshape(dUNNxxyz[:, 0], shape=[-1, 1])
+            dUNNyy = torch.reshape(dUNNyxyz[:, 1], shape=[-1, 1])
+            dUNNzz = torch.reshape(dUNNzxyz[:, 2], shape=[-1, 1])
+
+            # -Laplace U = f --> -Laplace U - f --> -(Laplace U + f)
+            loss_it_L2 = dUNNxx + dUNNyy + dUNNzz + torch.reshape(force_side, shape=[-1, 1])
             square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
             loss_it = torch.mean(square_loss_it)
         return UNN, loss_it
 
-    def loss2bd(self, XY_bd=None, Ubd_exact=None, if_lambda2Ubd=True):
-        assert (XY_bd is not None)
+    def loss2bd(self, XYZ_bd=None, Ubd_exact=None, if_lambda2Ubd=True):
+        assert (XYZ_bd is not None)
         assert (Ubd_exact is not None)
 
-        shape2XY = XY_bd.shape
-        lenght2XY_shape = len(shape2XY)
-        assert (lenght2XY_shape == 2)
-        assert (shape2XY[-1] == 2)
-        X_bd = torch.reshape(XY_bd[:, 0], shape=[-1, 1])
-        Y_bd = torch.reshape(XY_bd[:, 1], shape=[-1, 1])
+        shape2XYZ = XYZ_bd.shape
+        lenght2XYZ_shape = len(shape2XYZ)
+        assert (lenght2XYZ_shape == 2)
+        assert (shape2XYZ[-1] == 3)
+        X_bd = torch.reshape(XYZ_bd[:, 0], shape=[-1, 1])
+        Y_bd = torch.reshape(XYZ_bd[:, 1], shape=[-1, 1])
+        Z_bd = torch.reshape(XYZ_bd[:, 2], shape=[-1, 1])
 
         if if_lambda2Ubd:
-            Ubd = Ubd_exact(X_bd, Y_bd)
+            Ubd = Ubd_exact(X_bd, Y_bd, Z_bd)
         else:
             Ubd = Ubd_exact
 
-        UNN_bd = self.DNN(XY_bd, scale=self.factor2freq)
+        UNN_bd = self.DNN(XYZ_bd, scale=self.factor2freq)
         loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
         loss_bd = torch.mean(loss_bd_square)
         return loss_bd
@@ -134,14 +140,14 @@ class MscaleDNN(tn.Module):
         sum2WB = self.DNN.get_regular_sum2WB(self.opt2regular_WB)
         return sum2WB
 
-    def evalue_MscaleDNN(self, XY_points=None):
-        assert (XY_points is not None)
-        shape2XY = XY_points.shape
-        lenght2XY_shape = len(shape2XY)
-        assert (lenght2XY_shape == 2)
-        assert (shape2XY[-1] == 2)
+    def evalue_MscaleDNN(self, XYZ_points=None):
+        assert (XYZ_points is not None)
+        shape2XYZ = XYZ_points.shape
+        lenght2XYZ_shape = len(shape2XYZ)
+        assert (lenght2XYZ_shape == 2)
+        assert (shape2XYZ[-1] == 3)
 
-        UNN = self.DNN(XY_points, scale=self.factor2freq)
+        UNN = self.DNN(XYZ_points, scale=self.factor2freq)
         return UNN
 
 
@@ -159,38 +165,21 @@ def solve_Multiscale_PDE(R):
 
     bd_penalty_init = R['init_boundary_penalty']                # Regularization parameter for boundary conditions
     penalty2WB = R['penalty2weight_biases']                # Regularization parameter for weights and biases
-    lr_decay = R['learning_rate_decay']
     learning_rate = R['learning_rate']
-    hidden_layers = R['hidden_layers']
     act_func = R['activate_func']
 
     input_dim = R['input_dim']
     out_dim = R['output_dim']
 
     # pLaplace 算子需要的额外设置, 先预设一下
-    p_index = 2
-    mesh_number = 2
-
     region_lb = 0.0
     region_rt = 1.0
     if R['PDE_type'] == 'general_Laplace':
         # -laplace u = f
         region_lb = 0.0
         region_rt = 1.0
-        f, u_true, u00, u01, u10, u11, u20, u21 = General_Laplace.get_infos2Laplace_3D(
+        f, u_true, u_left, u_right, u_bottom, u_top, u_front, u_behind = General_Laplace.get_infos2Laplace_3D(
             input_dim=input_dim, out_dim=out_dim, intervalL=region_lb, intervalR=region_rt, equa_name=R['equa_name'])
-    elif R['PDE_type'] == 'Possion_Boltzmann':
-        region_lb = 0.0
-        region_rt = 1.0
-        Aeps, kappa, f, u_true, u00, u01, u10, u11, u20, u21 = MS_BoltzmannEqs.get_infos2Boltzmann_3D(
-            input_dim=input_dim, out_dim=out_dim, mesh_number=R['mesh_number'], intervalL=0.0, intervalR=1.0,
-            equa_name=R['equa_name'])
-    elif R['PDE_type'] == 'pLaplace':
-        region_lb = 0.0
-        region_rt = 1.0
-        u_true, f, Aeps, u00, u01, u10, u11, u20, u21 = MS_LaplaceEqs.get_infos2pLaplace_3D(
-            input_dim=input_dim, out_dim=out_dim, mesh_number=R['mesh_number'], intervalL=0.0, intervalR=1.0,
-            equa_name=R['equa_name'])
 
     mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
                           Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
@@ -242,17 +231,22 @@ def solve_Multiscale_PDE(R):
         test_bach_size = 1600
         size2test = 40
         mat_data_path = 'dataMat_highDim'
-        test_xyz_bach = dataUtilizer2torch.get_data2Biharmonic(dim=input_dim, data_path=mat_data_path)
+        test_xyz_bach = Load_data2Mat.get_randomData2mat(dim=input_dim, data_path=mat_data_path)
         saveData.save_testData_or_solus2mat(test_xyz_bach, dataName='testXYZ', outPath=R['FolderName'])
+
+    test_xyz_bach = test_xyz_bach.astype(np.float32)
+    test_xyz_torch = torch.from_numpy(test_xyz_bach)
+    if True == R['use_gpu']:
+        test_xyz_torch = test_xyz_torch.cuda(device='cuda:' + str(R['gpuNo']))
 
     for i_epoch in range(R['max_epoch'] + 1):
         xyz_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_lb, region_b=region_rt,
-                                             to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
-                                             use_grad2x=True)
+                                                  to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
+                                                  use_grad2x=True)
         xyz_bottom_batch, xyz_top_batch, xyz_left_batch, xyz_right_batch, xyz_front_batch, xyz_behind_batch = \
             dataUtilizer2torch.rand_bd_2D(batchsize_bd, R['input_dim'], region_a=region_lb, region_b=region_rt,
                                           to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'])
-        tmp_lr = tmp_lr * (1 - lr_decay)
+
         if R['activate_penalty2bd_increase'] == 1:
             if i_epoch < int(R['max_epoch'] / 10):
                 temp_penalty_bd = bd_penalty_init
@@ -270,14 +264,14 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xy_it_batch, fside=f, loss_type=R['loss_type'])
+            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xyz_it_batch, fside=f, loss_type=R['loss_type'])
 
-        loss_bd2left = mscalednn.loss2bd(XY_bd=xyz_left_batch, Ubd_exact=u_left)
-        loss_bd2right = mscalednn.loss2bd(XY_bd=xyz_right_batch, Ubd_exact=u_right)
-        loss_bd2bottom = mscalednn.loss2bd(XY_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
-        loss_bd2top = mscalednn.loss2bd(XY_bd=xyz_top_batch, Ubd_exact=u_top)
-        loss_bd2front = mscalednn.loss2bd(XY_bd=xyz_front_batch, Ubd_exact=u_front)
-        loss_bd2behind = mscalednn.loss2bd(XY_bd=xyz_behind_batch, Ubd_exact=u_behind)
+        loss_bd2left = mscalednn.loss2bd(XYZ_bd=xyz_left_batch, Ubd_exact=u_left)
+        loss_bd2right = mscalednn.loss2bd(XYZ_bd=xyz_right_batch, Ubd_exact=u_right)
+        loss_bd2bottom = mscalednn.loss2bd(XYZ_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
+        loss_bd2top = mscalednn.loss2bd(XYZ_bd=xyz_top_batch, Ubd_exact=u_top)
+        loss_bd2front = mscalednn.loss2bd(XYZ_bd=xyz_front_batch, Ubd_exact=u_front)
+        loss_bd2behind = mscalednn.loss2bd(XYZ_bd=xyz_behind_batch, Ubd_exact=u_behind)
         loss_bd = loss_bd2left + loss_bd2right + loss_bd2bottom + loss_bd2top + loss_bd2front + loss_bd2behind
 
         PWB = penalty2WB * mscalednn.get_regularSum2WB()
@@ -303,6 +297,7 @@ def solve_Multiscale_PDE(R):
         train_rel_all.append(train_rel.item())
 
         if i_epoch % 1000 == 0:
+            tmp_lr = optimizer.param_groups[0]['lr']
             run_times = time.time() - t0
             DNN_tools.print_and_log_train_one_epoch(
                 i_epoch, run_times, tmp_lr, temp_penalty_bd, PWB, loss_it.item(), loss_bd.item(), loss.item(),
@@ -310,53 +305,65 @@ def solve_Multiscale_PDE(R):
 
             # ---------------------------   test network ----------------------------------------------
             test_epoch.append(i_epoch / 1000)
-            if R['PDE_type'] == 'general_Laplace' or R['PDE_type'] == 'pLaplace' or \
-                    R['PDE_type'] == 'Possion_Boltzmann':
-                u_true2test, u_nn2test = sess.run(
-                    [U_true, UNN], feed_dict={XYZ_it: test_xyz_bach, train_opt: train_option})
+            if R['PDE_type'] == 'pLaplace_implicit':
+                UNN2test = mscalednn.evalue_MscaleDNN(XYZ_points=test_xyz_torch)
+                Utrue2test = torch.from_numpy(u_true.astype(np.float32))
             else:
-                u_true2test = u_true
-                u_nn2test = sess.run(UNN,  feed_dict={XYZ_it: test_xyz_bach, train_opt: train_option})
+                UNN2test = mscalednn.evalue_MscaleDNN(XYZ_points=test_xyz_torch)
+                Utrue2test = u_true(torch.reshape(test_xyz_torch[:, 0], shape=[-1, 1]),
+                                    torch.reshape(test_xyz_torch[:, 1], shape=[-1, 1]),
+                                    torch.reshape(test_xyz_torch[:, 2], shape=[-1, 1]))
 
-            point_square_error = np.square(u_true2test - u_nn2test)
-            mse2test = np.mean(point_square_error)
-            test_mse_all.append(mse2test)
-            res2test = mse2test / np.mean(np.square(u_true2test))
-            test_rel_all.append(res2test)
+            point_square_error = torch.square(Utrue2test - UNN2test)
+            test_mse = torch.mean(point_square_error)
+            test_rel = test_mse / torch.mean(torch.square(Utrue2test))
+            test_mse_all.append(test_mse.item())
+            test_rel_all.append(test_rel.item())
+            DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
 
-            DNN_tools.print_and_log_test_one_epoch(mse2test, res2test, log_out=log_fileout)
-
-    # ------------------- save the testing results into mat file and plot them -------------------------
-    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=act_func,
+    # ------------------- save the training results into mat file and plot them -------------------------
+    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'],
                                          outPath=R['FolderName'])
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=act_func, outPath=R['FolderName'])
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'],
+                                    outPath=R['FolderName'])
 
     plotData.plotTrain_loss_1act_func(loss_it_all, lossType='loss_it', seedNo=R['seed'], outPath=R['FolderName'])
     plotData.plotTrain_loss_1act_func(loss_bd_all, lossType='loss_bd', seedNo=R['seed'], outPath=R['FolderName'],
                                       yaxis_scale=True)
     plotData.plotTrain_loss_1act_func(loss_all, lossType='loss', seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=act_func, outPath=R['FolderName'])
-    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=act_func, seedNo=R['seed'],
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'],
+                                    outPath=R['FolderName'])
+    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['activate_func'], seedNo=R['seed'],
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
-    saveData.save_2testSolus2mat(u_true2test, u_nn2test, actName='utrue', actName1=act_func, outPath=R['FolderName'])
+    if True == R['use_gpu']:
+        utrue2test_numpy = Utrue2test.cpu().detach().numpy()
+        unn2test_numpy = UNN2test.cpu().detach().numpy()
+        point_square_error_numpy = point_square_error.cpu().detach().numpy()
+    else:
+        utrue2test_numpy = Utrue2test.detach().numpy()
+        unn2test_numpy = UNN2test.detach().numpy()
+        point_square_error_numpy = point_square_error.detach().numpy()
 
-    # 绘制解的热力图(真解和DNN解)
-    plotData.plot_Hot_solution2test(u_true2test, size_vec2mat=size2test, actName='Utrue', seedNo=R['seed'],
-                                    outPath=R['FolderName'])
-    plotData.plot_Hot_solution2test(u_nn2test, size_vec2mat=size2test, actName=act_func, seedNo=R['seed'],
-                                    outPath=R['FolderName'])
+    saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue',
+                                 actName1=R['activate_func'], outPath=R['FolderName'])
 
-    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=act_func, outPath=R['FolderName'])
-    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=act_func,
+    plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue',
+                                    seedNo=R['seed'], outPath=R['FolderName'])
+    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['activate_func'],
+                                    seedNo=R['seed'], outPath=R['FolderName'])
+
+    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
+    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['activate_func'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error, actName=act_func, outPath=R['FolderName'])
+    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['activate_func'],
+                                          outPath=R['FolderName'])
 
-    plotData.plot_Hot_point_wise_err(point_square_error, size_vec2mat=size2test, actName=act_func,
-                                     seedNo=R['seed'], outPath=R['FolderName'])
+    plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test,
+                                     actName=R['activate_func'], seedNo=R['seed'], outPath=R['FolderName'])
 
 
 if __name__ == "__main__":
