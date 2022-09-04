@@ -336,7 +336,7 @@ def solve_Multiscale_PDE(R):
             train_rel = torch.tensor([0], dtype=torch.float32)
         else:
             Uexact2train = u_true(torch.reshape(xy_it_batch[:, 0], shape=[-1, 1]),
-                            torch.reshape(xy_it_batch[:, 1], shape=[-1, 1]))
+                                  torch.reshape(xy_it_batch[:, 1], shape=[-1, 1]))
             train_mse = torch.mean(torch.square(UNN2train - Uexact2train))
             train_rel = train_mse / torch.mean(torch.square(Uexact2train))
 
@@ -352,16 +352,16 @@ def solve_Multiscale_PDE(R):
 
             test_epoch.append(i_epoch / 1000)
             if R['PDE_type'] == 'pLaplace_implicit':
-                unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
-                utrue2test = torch.from_numpy(u_true.astype(np.float32))
+                UNN2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
+                Utrue2test = torch.from_numpy(u_true.astype(np.float32))
             else:
-                unn2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
-                utrue2test = u_true(torch.reshape(test_xy_torch[:, 0], shape=[-1, 1]),
+                UNN2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
+                Utrue2test = u_true(torch.reshape(test_xy_torch[:, 0], shape=[-1, 1]),
                                     torch.reshape(test_xy_torch[:, 1], shape=[-1, 1]))
 
-            point_square_error = torch.square(utrue2test - unn2test)
+            point_square_error = torch.square(Utrue2test - UNN2test)
             test_mse = torch.mean(point_square_error)
-            test_rel = test_mse / torch.mean(torch.square(utrue2test))
+            test_rel = test_mse / torch.mean(torch.square(Utrue2test))
             test_mse_all.append(test_mse.item())
             test_rel_all.append(test_rel.item())
             DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
@@ -381,22 +381,31 @@ def solve_Multiscale_PDE(R):
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
-    saveData.save_2testSolus2mat(utrue2test.detach().numpy(), unn2test.detach().numpy(), actName='utrue',
+    if True == R['use_gpu']:
+        utrue2test_numpy = Utrue2test.cpu().detach().numpy()
+        unn2test_numpy = UNN2test.cpu().detach().numpy()
+        point_square_error_numpy = point_square_error.cpu().detach().numpy()
+    else:
+        utrue2test_numpy = Utrue2test.detach().numpy()
+        unn2test_numpy = UNN2test.detach().numpy()
+        point_square_error_numpy = point_square_error.detach().numpy()
+
+    saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue',
                                  actName1=R['activate_func'], outPath=R['FolderName'])
 
-    plotData.plot_Hot_solution2test(utrue2test.detach().numpy(), size_vec2mat=size2test, actName='Utrue',
+    plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue',
                                     seedNo=R['seed'], outPath=R['FolderName'])
-    plotData.plot_Hot_solution2test(unn2test.detach().numpy(), size_vec2mat=size2test, actName=R['activate_func'],
+    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['activate_func'],
                                     seedNo=R['seed'], outPath=R['FolderName'])
 
     saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
     plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['activate_func'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error.detach().numpy(), actName=R['activate_func'],
+    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['activate_func'],
                                           outPath=R['FolderName'])
 
-    plotData.plot_Hot_point_wise_err(point_square_error.detach().numpy(), size_vec2mat=size2test,
+    plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test,
                                      actName=R['activate_func'], seedNo=R['seed'], outPath=R['FolderName'])
 
 
