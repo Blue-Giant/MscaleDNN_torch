@@ -93,16 +93,16 @@ class MscaleDNN(tn.Module):
             loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
             loss_it = torch.mean(loss_it_ritz)
         elif str.lower(loss_type) == 'l2_loss':
-            dUNN_x = torch.autograd.grad(dUNN[:, 0], XY, grad_outputs=torch.ones_like(XY),
-                                         create_graph=True, retain_graph=True)[0]
-            dUNN_y = torch.autograd.grad(dUNN[:, 1], XY, grad_outputs=torch.ones_like(XY),
-                                         create_graph=True, retain_graph=True)[0]
-            dUNNxxy = torch.autograd.grad(dUNN_x[:, 0], XY, grad_outputs=torch.ones_like(XY),
-                                          create_graph=True, retain_graph=True)[0]
-            dUNNyxy = torch.autograd.grad(dUNN_y[:, 1], XY, grad_outputs=torch.ones_like(XY),
-                                          create_graph=True, retain_graph=True)[0]
-            dUNNxx = dUNNxxy[:, 0]
-            dUNNyy = dUNNyxy[:, 1]
+            dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
+            dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
+
+            dUNNxxy = torch.autograd.grad(dUNN2x, XY, grad_outputs=torch.ones_like(X), create_graph=True,
+                                          retain_graph=True)[0]
+            dUNNyxy = torch.autograd.grad(dUNN2y, XY, grad_outputs=torch.ones_like(X), create_graph=True,
+                                          retain_graph=True)[0]
+
+            dUNNxx = torch.reshape(dUNNxxy[:, 0], shape=[-1, 1])
+            dUNNyy = torch.reshape(dUNNyxy[:, 1], shape=[-1, 1])
             # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
             loss_it_L2 = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
             square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
@@ -146,9 +146,9 @@ class MscaleDNN(tn.Module):
 
 
 def solve_Multiscale_PDE(R):
-    log_out_path = R['FolderName']  # 将路径从字典 R 中提取出来
-    if not os.path.exists(log_out_path):  # 判断路径是否已经存在
-        os.mkdir(log_out_path)  # 无 log_out_path 路径，创建一个 log_out_path 路径
+    log_out_path = R['FolderName']         # 将路径从字典 R 中提取出来
+    if not os.path.exists(log_out_path):   # 判断路径是否已经存在
+        os.mkdir(log_out_path)             # 无 log_out_path 路径，创建一个 log_out_path 路径
     logfile_name = '%s_%s.txt' % ('log2train', R['name2act_hidden'])
     log_fileout = open(os.path.join(log_out_path, logfile_name), 'w')  # 在这个路径下创建并打开一个可写的 log_train.txt文件
     DNN_Log_Print.dictionary_out2file(R, log_fileout)
@@ -158,7 +158,7 @@ def solve_Multiscale_PDE(R):
     batchsize_bd = R['batch_size2boundary']
 
     bd_penalty_init = R['init_boundary_penalty']  # Regularization parameter for boundary conditions
-    penalty2WB = R['penalty2weight_biases']  # Regularization parameter for weights and biases
+    penalty2WB = R['penalty2weight_biases']       # Regularization parameter for weights and biases
     learning_rate = R['learning_rate']
 
     input_dim = R['input_dim']
@@ -228,7 +228,7 @@ def solve_Multiscale_PDE(R):
     # optimizer = torch.optim.SGD(params2Net, lr=init_lr)                     # SGD
     # optimizer = torch.optim.SGD(params2Net, lr=init_lr, momentum=0.8)       # momentum
     # optimizer = torch.optim.RMSprop(params2Net, lr=init_lr, alpha=0.95)     # RMSProp
-    optimizer = torch.optim.Adam(params2Net, lr=learning_rate)  # Adam
+    optimizer = torch.optim.Adam(params2Net, lr=learning_rate)                # Adam
 
     # 定义更新学习率的方法
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
@@ -525,8 +525,8 @@ if __name__ == "__main__":
     # R['testData_model'] = 'loadData'
     R['testData_model'] = 'random_generate'
 
-    # R['loss_type'] = 'L2_loss'                             # loss类型:L2 loss
-    R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
+    R['loss_type'] = 'L2_loss'                             # loss类型:L2 loss
+    # R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
     # R['loss_type'] = 'lncosh_loss2Ritz'
     R['lambda2lncosh'] = 50.0
 
