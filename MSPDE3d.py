@@ -27,7 +27,7 @@ import DNN_Log_Print
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=4, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='relu',
                  name2actHidden='relu', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None, use_gpu=False, No2GPU=0):
+                 factor2freq=None, sFourier=1.0, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(
@@ -53,6 +53,7 @@ class MscaleDNN(tn.Module):
         self.name2actHidden = name2actHidden
         self.name2actOut = name2actOut
         self.factor2freq = factor2freq
+        self.sFourier = sFourier
         self.opt2regular_WB = opt2regular_WB
 
         if type2numeric == 'float32':
@@ -85,7 +86,7 @@ class MscaleDNN(tn.Module):
         else:
             force_side = fside
 
-        UNN = self.DNN(XYZ, scale=self.factor2freq)
+        UNN = self.DNN(XYZ, scale=self.factor2freq, sFourier=self.sFourier)
         grad2UNN = torch.autograd.grad(UNN, XYZ, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
         dUNN = grad2UNN[0]
 
@@ -131,7 +132,7 @@ class MscaleDNN(tn.Module):
         else:
             Ubd = Ubd_exact
 
-        UNN_bd = self.DNN(XYZ_bd, scale=self.factor2freq)
+        UNN_bd = self.DNN(XYZ_bd, scale=self.factor2freq, sFourier=self.sFourier)
         loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
         loss_bd = torch.mean(loss_bd_square)
         return loss_bd
@@ -147,7 +148,7 @@ class MscaleDNN(tn.Module):
         assert (lenght2XYZ_shape == 2)
         assert (shape2XYZ[-1] == 3)
 
-        UNN = self.DNN(XYZ_points, scale=self.factor2freq)
+        UNN = self.DNN(XYZ_points, scale=self.factor2freq, sFourier=self.sFourier)
         return UNN
 
 

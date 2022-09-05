@@ -27,7 +27,7 @@ import DNN_Log_Print
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=4, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='relu',
                  name2actHidden='relu', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None, use_gpu=False, No2GPU=0):
+                 factor2freq=None, sFourier=1.0, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(
@@ -53,6 +53,7 @@ class MscaleDNN(tn.Module):
         self.name2actHidden = name2actHidden
         self.name2actOut = name2actOut
         self.factor2freq = factor2freq
+        self.sFourier = sFourier
         self.opt2regular_WB = opt2regular_WB
 
         if type2numeric == 'float32':
@@ -84,7 +85,7 @@ class MscaleDNN(tn.Module):
         else:
             force_side = fside
 
-        UNN = self.DNN(XY, scale=self.factor2freq)
+        UNN = self.DNN(XY, scale=self.factor2freq, sFourier=self.sFourier)
         grad2UNN = torch.autograd.grad(UNN, XY, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
         dUNN = grad2UNN[0]
 
@@ -125,7 +126,7 @@ class MscaleDNN(tn.Module):
         else:
             Ubd = Ubd_exact
 
-        UNN_bd = self.DNN(XY_bd, scale=self.factor2freq)
+        UNN_bd = self.DNN(XY_bd, scale=self.factor2freq, sFourier=self.sFourier)
         loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
         loss_bd = torch.mean(loss_bd_square)
         return loss_bd
@@ -141,7 +142,7 @@ class MscaleDNN(tn.Module):
         assert (lenght2XY_shape == 2)
         assert (shape2XY[-1] == 2)
 
-        UNN = self.DNN(XY_points, scale=self.factor2freq)
+        UNN = self.DNN(XY_points, scale=self.factor2freq, sFourier=self.sFourier)
         return UNN
 
 
@@ -366,7 +367,7 @@ def solve_Multiscale_PDE(R):
             test_rel_all.append(test_rel.item())
             DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
 
-    # ------------------- save the testing results into mat file and plot them -------------------------
+    # ------------------- save the training results into mat file and plot them -------------------------
     saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'],
                                          outPath=R['FolderName'])
     saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'], outPath=R['FolderName'])

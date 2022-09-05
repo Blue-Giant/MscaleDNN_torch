@@ -223,12 +223,14 @@ class Dense_Net(tn.Module):
         if name2Model is not wavelet NN, actName2in is not same as actName; otherwise, actName2in is same as actName
     """
     def __init__(self, indim=1, outdim=1, hidden_units=None, name2Model='DNN', actName2in='tanh', actName='tanh',
-                 actName2out='linear', scope2W='Weight', scope2B='Bias', type2float='float32'):
+                 actName2out='linear', scope2W='Weight', scope2B='Bias', type2float='float32', to_gpu=False, gpu_no=0):
         super(Dense_Net, self).__init__()
         self.indim = indim
         self.outdim = outdim
         self.hidden_units = hidden_units
         self.name2Model = name2Model
+        self.to_gpu = to_gpu
+        self.gpu_no = gpu_no
         self.actFunc_in = my_actFunc(actName=actName2in)
         self.actFunc = my_actFunc(actName=actName)
         self.actFunc_out = my_actFunc(actName=actName2out)
@@ -392,7 +394,7 @@ class Pure_DenseNet(tn.Module):
                 regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
         return regular_w, regular_b
 
-    def forward(self, inputs, scale=None, training=None, mask=None):
+    def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
         # ------ dealing with the input data ---------------
         dense_in = self.dense_layers[0]
         H = dense_in(inputs)
@@ -474,7 +476,7 @@ class Dense_ScaleNet(tn.Module):
                 regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
         return regular_w + regular_b
 
-    def forward(self, inputs, scale=None, training=None, mask=None):
+    def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
         # ------ dealing with the input data ---------------
         dense_in = self.dense_layers[0]
         H = dense_in(inputs)
@@ -582,7 +584,7 @@ class Dense_FourierNet(tn.Module):
                 i_layer = i_layer + 1
         return regular_w + regular_b
 
-    def forward(self, inputs, scale=None, training=None, mask=None):
+    def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
         # ------ dealing with the input data ---------------
         dense_in = self.dense_layers[0]
         H = dense_in(inputs)
@@ -602,7 +604,7 @@ class Dense_FourierNet(tn.Module):
         if self.to_gpu:
             torch_mixcoe = torch_mixcoe.cuda(device='cuda:'+str(self.gpu_no))
 
-        H = torch.cat([torch.cos(H*torch_mixcoe), torch.sin(H*torch_mixcoe)], dim=-1)
+        H = sFourier*torch.cat([torch.cos(H*torch_mixcoe), torch.sin(H*torch_mixcoe)], dim=-1)
 
         #  ---resnet(one-step skip connection for two consecutive layers if have equal neurons）---
         hidden_record = self.hidden_units[0]

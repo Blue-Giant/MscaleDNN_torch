@@ -25,7 +25,7 @@ import saveData
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=2, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='tanh',
                  name2actHidden='tanh', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None, use_gpu=False, No2GPU=0):
+                 factor2freq=None, sFourier=1.0, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         self.input_dim = input_dim
         self.out_dim = out_dim
@@ -35,6 +35,7 @@ class MscaleDNN(tn.Module):
         self.name2actHidden = name2actHidden
         self.name2actOut = name2actOut
         self.factor2freq = factor2freq
+        self.sFourier = sFourier
         self.opt2regular_WB = opt2regular_WB
 
         if Model_name == 'Fourier_DNN':
@@ -81,7 +82,7 @@ class MscaleDNN(tn.Module):
             force_side = fside
 
         # cuda_one = torch.ones_like(X)
-        UNN = self.DNN(X, scale=self.factor2freq)
+        UNN = self.DNN(X, scale=self.factor2freq, sFourier=self.sFourier)
         grad2UNNx = torch.autograd.grad(UNN, X, grad_outputs=torch.ones_like(X),
                                         create_graph=True, retain_graph=True)
         dUNN = grad2UNNx[0]
@@ -115,7 +116,7 @@ class MscaleDNN(tn.Module):
         else:
             Ubd = Ubd_exact
 
-        UNN_bd = self.DNN(X_bd, scale=self.factor2freq)
+        UNN_bd = self.DNN(X_bd, scale=self.factor2freq, sFourier=self.sFourier)
         loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
         loss_bd = torch.mean(loss_bd_square)
         return loss_bd
@@ -131,7 +132,7 @@ class MscaleDNN(tn.Module):
         assert (lenght2X_shape == 2)
         assert (shape2X[-1] == 1)
 
-        UNN = self.DNN(X_points, scale=self.factor2freq)
+        UNN = self.DNN(X_points, scale=self.factor2freq, sFourier=self.sFourier)
         return UNN
 
 
@@ -240,17 +241,9 @@ def solve_Multiscale_PDE(R):
         pwb = penalty2WB*mscalednn.get_regularSum2WB()
         loss = loss_it + temp_penalty_bd*loss_bd + pwb
 
-        if True == R['use_gpu']:
-            loss_cpu = loss.cpu()
-            loss2it_cpu = loss_it.cpu()
-            loss2bd_cpu = loss_bd.cpu()
-            loss_all.append(loss_cpu.item())
-            loss_it_all.append(loss2it_cpu.item())
-            loss_bd_all.append(loss2bd_cpu.item())
-        else:
-            loss_all.append(loss.item())
-            loss_it_all.append(loss_it.item())
-            loss_bd_all.append(loss_bd.item())
+        loss_all.append(loss.item())
+        loss_it_all.append(loss_it.item())
+        loss_bd_all.append(loss_bd.item())
 
         optimizer.zero_grad()  # 求导前先清零, 只要在下一次求导前清零即可
         loss.backward()        # 对loss关于Ws和Bs求偏导
@@ -261,12 +254,8 @@ def solve_Multiscale_PDE(R):
         train_mse = torch.mean(torch.mul(UNN2train-Uexact, UNN2train-Uexact))
         train_rel = train_mse/torch.mean(torch.mul(Uexact, Uexact))
 
-        if True == R['use_gpu']:
-            train_mse_all.append(train_mse)
-            train_rel_all.append(train_rel)
-        else:
-            train_mse_all.append(train_mse.item())
-            train_rel_all.append(train_rel.item())
+        train_mse_all.append(train_mse.item())
+        train_rel_all.append(train_rel.item())
 
         if i_epoch % 1000 == 0:
             run_times = time.time() - t0
@@ -282,12 +271,10 @@ def solve_Multiscale_PDE(R):
             point_square_error = torch.mul(Uexact2test - unn2test)
             test_mse = torch.mean(point_square_error)
             test_rel = test_mse/torch.mean(torch.mul(Uexact2test, Uexact2test))
-            if True == R['use_gpu']:
-                test_mse_all.append(test_mse.cpu().item())
-                test_rel_all.append(test_rel.cpu().item())
-            else:
-                test_mse_all.append(test_mse.item())
-                test_rel_all.append(test_rel.item())
+
+            test_mse_all.append(test_mse.item())
+            test_rel_all.append(test_rel.item())
+
             DNN_tools.print_and_log_test_one_epoch(test_mse, test_rel, log_out=log_fileout)
 
     # -----------------------  save training results to mat files, then plot them ---------------------------------
