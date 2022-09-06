@@ -167,7 +167,6 @@ def solve_Multiscale_PDE(R):
     bd_penalty_init = R['init_boundary_penalty']                # Regularization parameter for boundary conditions
     penalty2WB = R['penalty2weight_biases']                # Regularization parameter for weights and biases
     learning_rate = R['learning_rate']
-    act_func = R['activate_func']
 
     input_dim = R['input_dim']
     out_dim = R['output_dim']
@@ -348,11 +347,11 @@ def solve_Multiscale_PDE(R):
         unn2test_numpy = UNN2test.detach().numpy()
         point_square_error_numpy = point_square_error.detach().numpy()
 
-    saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue',
-                                 actName1=R['activate_func'], outPath=R['FolderName'])
+    saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue', actName1=R['activate_func'],
+                                 outPath=R['FolderName'])
 
-    plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue',
-                                    seedNo=R['seed'], outPath=R['FolderName'])
+    plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue', seedNo=R['seed'],
+                                    outPath=R['FolderName'])
     plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['activate_func'],
                                     seedNo=R['seed'], outPath=R['FolderName'])
 
@@ -360,11 +359,10 @@ def solve_Multiscale_PDE(R):
     plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['activate_func'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['activate_func'],
-                                          outPath=R['FolderName'])
+    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['activate_func'], outPath=R['FolderName'])
 
-    plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test,
-                                     actName=R['activate_func'], seedNo=R['seed'], outPath=R['FolderName'])
+    plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test, actName=R['activate_func'],
+                                     seedNo=R['seed'], outPath=R['FolderName'])
 
 
 if __name__ == "__main__":
