@@ -138,7 +138,7 @@ class DenseNet(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.square(layer.weight))
                 regular_b = regular_b + torch.sum(torch.square(layer.bias))
-        return regular_w, regular_b
+        return regular_w + regular_b
 
     def get_regular_sum2Fourier(self, regular_model='L2'):
         regular_w = 0.0
@@ -223,7 +223,8 @@ class Dense_Net(tn.Module):
         if name2Model is not wavelet NN, actName2in is not same as actName; otherwise, actName2in is same as actName
     """
     def __init__(self, indim=1, outdim=1, hidden_units=None, name2Model='DNN', actName2in='tanh', actName='tanh',
-                 actName2out='linear', scope2W='Weight', scope2B='Bias', type2float='float32', to_gpu=False, gpu_no=0):
+                 actName2out='linear', scope2W='Weight', scope2B='Bias', repeat_Highfreq=True, type2float='float32',
+                 to_gpu=False, gpu_no=0):
         super(Dense_Net, self).__init__()
         self.indim = indim
         self.outdim = outdim
@@ -231,6 +232,7 @@ class Dense_Net(tn.Module):
         self.name2Model = name2Model
         self.to_gpu = to_gpu
         self.gpu_no = gpu_no
+        self.repeat_Highfreq = repeat_Highfreq
         self.actFunc_in = my_actFunc(actName=actName2in)
         self.actFunc = my_actFunc(actName=actName)
         self.actFunc_out = my_actFunc(actName=actName2out)
@@ -284,7 +286,7 @@ class Dense_Net(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.square(layer.weight))
                 regular_b = regular_b + torch.sum(torch.square(layer.bias))
-        return regular_w, regular_b
+        return regular_w + regular_b
 
     def forward(self, inputs, scale=None, training=None, mask=None):
         # ------ dealing with the input data ---------------
@@ -356,6 +358,8 @@ class Pure_DenseNet(tn.Module):
     def __init__(self, indim=1, outdim=1, hidden_units=None, name2Model='DNN', actName2in='tanh', actName='tanh',
                  actName2out='linear', scope2W='Weight', scope2B='Bias', type2float='float32', to_gpu=False, gpu_no=0):
         super(Pure_DenseNet, self).__init__()
+        self.to_gpu = to_gpu
+        self.gpu_no = gpu_no
         self.indim = indim
         self.outdim = outdim
         self.hidden_units = hidden_units
@@ -392,7 +396,7 @@ class Pure_DenseNet(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.mul(layer.weight, layer.weight))
                 regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
-        return regular_w, regular_b
+        return regular_w + regular_b
 
     def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
         # ------ dealing with the input data ---------------
