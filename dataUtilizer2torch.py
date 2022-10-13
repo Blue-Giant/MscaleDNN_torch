@@ -217,6 +217,15 @@ def rand_bd_4D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_f
             x3a = x3a.cuda(device='cuda:' + str(gpu_no))
             x3b = x3b.cuda(device='cuda:' + str(gpu_no))
 
+        x0a.requires_grad = use_grad
+        x0b.requires_grad = use_grad
+        x1a.requires_grad = use_grad
+        x1b.requires_grad = use_grad
+        x2a.requires_grad = use_grad
+        x2b.requires_grad = use_grad
+        x3a.requires_grad = use_grad
+        x3b.requires_grad = use_grad
+
     return x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b
 
 
@@ -294,5 +303,16 @@ def rand_bd_5D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_f
             x3b = x3b.cuda(device='cuda:' + str(gpu_no))
             x4a = x4a.cuda(device='cuda:' + str(gpu_no))
             x4b = x4b.cuda(device='cuda:' + str(gpu_no))
+
+        x0a.requires_grad = use_grad
+        x0b.requires_grad = use_grad
+        x1a.requires_grad = use_grad
+        x1b.requires_grad = use_grad
+        x2a.requires_grad = use_grad
+        x2b.requires_grad = use_grad
+        x3a.requires_grad = use_grad
+        x3b.requires_grad = use_grad
+        x4a.requires_grad = use_grad
+        x4b.requires_grad = use_grad
 
     return x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b, x4a, x4b
