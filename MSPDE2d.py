@@ -219,7 +219,8 @@ def solve_Multiscale_PDE(R):
     mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
                           Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
                           name2actOut=R['name2act_out'], opt2regular_WB='L0', type2numeric='float32',
-                          factor2freq=R['freq'], use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
+                          factor2freq=R['freq'], sFourier=R['sfourier'], repeat_highFreq=R['repeat_High_freq'],
+                          use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
     if True == R['use_gpu']:
         mscalednn = mscalednn.cuda(device='cuda:'+str(R['gpuNo']))
 
@@ -633,6 +634,8 @@ if __name__ == "__main__":
         # R['freq'] = np.arange(1, 100)
 
     R['use_gpu'] = True
+
+    R['repeat_High_freq'] = True
 
     solve_Multiscale_PDE(R)
 

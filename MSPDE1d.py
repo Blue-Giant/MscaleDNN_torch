@@ -25,7 +25,7 @@ import saveData
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=2, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='tanh',
                  name2actHidden='tanh', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None, sFourier=1.0, use_gpu=False, No2GPU=0):
+                 factor2freq=None, sFourier=1.0, repeat_highFreq=True, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         self.input_dim = input_dim
         self.out_dim = out_dim
@@ -41,18 +41,18 @@ class MscaleDNN(tn.Module):
         if Model_name == 'Fourier_DNN':
             self.DNN = DNN_base.Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                  name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                                 actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
-                                                 gpu_no=No2GPU)
+                                                 actName2out=name2actOut, type2float=type2numeric,
+                                                 repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
         elif Model_name == 'Scale_DNN':
             self.DNN = DNN_base.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                               actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
-                                               gpu_no=No2GPU)
+                                               actName2out=name2actOut, type2float=type2numeric,
+                                               repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
         else:
             self.DNN = DNN_base.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                               name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                              actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
-                                              gpu_no=No2GPU)
+                                              actName2out=name2actOut, type2float=type2numeric,
+                                              to_gpu=use_gpu, gpu_no=No2GPU)
 
         if type2numeric == 'float32':
             self.float_type = torch.float32
@@ -180,7 +180,8 @@ def solve_Multiscale_PDE(R):
     mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
                           Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
                           name2actOut=R['name2act_out'], opt2regular_WB='L0', type2numeric='float32',
-                          factor2freq=R['freq'], use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
+                          factor2freq=R['freq'], sFourier=R['sfourier'], repeat_highFreq=R['repeat_High_freq'],
+                          use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
     if True == R['use_gpu']:
         mscalednn = mscalednn.cuda(device='cuda:'+str(R['gpuNo']))
 
@@ -500,11 +501,22 @@ if __name__ == "__main__":
     R['name2act_out'] = 'linear'
 
     if R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'tanh':
+        # R['sfourier'] = 0.5
         R['sfourier'] = 1.0
     elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 's2relu':
         R['sfourier'] = 0.5
+        # R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sinAddcos':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sin':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
     else:
         R['sfourier'] = 1.0
+        # R['sfourier'] = 5.0
+        # R['sfourier'] = 0.75
 
     R['use_gpu'] = True
+    R['repeat_High_freq'] = True
     solve_Multiscale_PDE(R)
