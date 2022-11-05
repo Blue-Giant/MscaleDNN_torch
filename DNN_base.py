@@ -36,6 +36,8 @@ class my_actFunc(tn.Module):
             out_x = tnf.leaky_relu(x_input)
         elif str.lower(self.actName) == 'tanh':
             out_x = torch.tanh(x_input)
+        elif str.lower(self.actName) == 'enhance_tanh' or str.lower(self.actName) == 'enh_tanh':   # 增强的Tanh函数 Enhance Tanh
+            out_x = torch.tanh(0.5*torch.pi*x_input)
         elif str.lower(self.actName) == 'srelu':
             out_x = tnf.relu(x_input)*tnf.relu(1-x_input)
         elif str.lower(self.actName) == 's2relu':

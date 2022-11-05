@@ -481,13 +481,20 @@ if __name__ == "__main__":
 
     # &&&&&&&&&&&&&&&&&&& 激活函数的选择 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     R['name2act_in'] = 'tanh'
+    # R['name2act_in'] = 'sin'
+    # R['name2act_in'] = 'Enhance_tanh'
+    # R['name2act_in'] = 'gelu'
 
     # R['name2act_hidden'] = 'relu'
     R['name2act_hidden'] = 'tanh'
+    # R['name2act_hidden'] = 'Enhance_tanh'
+    # R['name2act_hidden'] = 'sin'
     # R['name2act_hidden'] = 'srelu'
     # R['name2act_hidden'] = 's2relu'
     # R['name2act_hidden'] = 'sinADDcos'
     # R['name2act_hidden'] = 'elu'
+    # R['name2act_hidden'] = 'gelu'
+    # R['name2act_hidden'] = 'mgelu'
     # R['name2act_hidden'] = 'phi'
 
     R['name2act_out'] = 'linear'

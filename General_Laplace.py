@@ -96,12 +96,12 @@ def get_infos2Laplace_3D(input_dim=1, out_dim=1, intervalL=0.0, intervalR=1.0, e
         # u=sin(pi*x)*sin(pi*y)*sin(pi*z), f=-pi*pi*sin(pi*x)*sin(pi*y)*sin(pi*z)
         fside = lambda x, y, z: -(torch.pi)*(torch.pi)*torch.sin(torch.pi*x)
         utrue = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_00 = lambda x, y, z: torch.sin(torch.pi*intervalL)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_01 = lambda x, y, z: torch.sin(torch.pi*intervalR)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_10 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*intervalL)*torch.sin(torch.pi*z)
-        u_11 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*intervalR)*torch.sin(torch.pi*z)
-        u_20 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*intervalL)
-        u_21 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*intervalR)
+        u_00 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_01 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_10 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_11 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_20 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_21 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
     return fside, utrue, u_00, u_01, u_10, u_11, u_20, u_21
 
 

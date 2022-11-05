@@ -27,7 +27,7 @@ import DNN_Log_Print
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=4, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='relu',
                  name2actHidden='relu', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None, sFourier=1.0, use_gpu=False, No2GPU=0):
+                 factor2freq=None, sFourier=1.0, repeat_highFreq=True, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(
@@ -38,12 +38,12 @@ class MscaleDNN(tn.Module):
             self.DNN = DNN_base.Dense_ScaleNet(
                 indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
                 actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
-                to_gpu=use_gpu, gpu_no=No2GPU)
+                repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
         elif 'FOURIER_DNN' == str.upper(Model_name) or 'DNN_FOURIERBASE' == str.upper(Model_name):
             self.DNN = DNN_base.Dense_FourierNet(
                 indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
                 actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
-                to_gpu=use_gpu, gpu_no=No2GPU)
+                repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
 
         self.input_dim = input_dim
         self.out_dim = out_dim
@@ -561,8 +561,11 @@ if __name__ == "__main__":
     R['init_boundary_penalty'] = 100                      # Regularization parameter for boundary conditions
 
     # 网络的频率范围设置
+    R['freq'] = np.concatenate(([1], np.arange(1, 30 - 1)), axis=0)
     # R['freq'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
-    R['freq'] = np.random.normal(0, 100, 100)
+    # R['freq'] = np.random.normal(0, 100, 100)
+
+    # R['freq'] = np.random.normal(0, 30, 30)
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
     # R['model2NN'] = 'DNN'
@@ -573,8 +576,9 @@ if __name__ == "__main__":
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
     if R['model2NN'] == 'Fourier_DNN':
-        R['hidden_layers'] = (
-        125, 200, 200, 100, 100, 80)  # 1*125+250*200+200*200+200*100+100*100+100*50+50*1=128205
+        # R['hidden_layers'] = (
+        # 125, 200, 200, 100, 100, 80)  # 1*125+250*200+200*200+200*100+100*100+100*50+50*1=128205
+        R['hidden_layers'] = (50, 80, 60, 60, 40)
     else:
         # R['hidden_layers'] = (100, 80, 80, 60, 40, 40)
         # R['hidden_layers'] = (200, 100, 80, 50, 30)
@@ -586,10 +590,13 @@ if __name__ == "__main__":
     # &&&&&&&&&&&&&&&&&&& 激活函数的选择 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # R['name2act_in'] = 'relu'
     R['name2act_in'] = 'tanh'
+    # R['name2act_in'] = 'sin'
+    # R['name2act_in'] = 'enhance_tanh'
     # R['name2act_in'] = 's2relu'
 
     # R['name2act_hidden'] = 'relu'
     R['name2act_hidden'] = 'tanh'
+    # R['name2act_hidden'] = 'enhance_tanh'
     # R['name2act_hidden']' = leaky_relu'
     # R['name2act_hidden'] = 'srelu'
     # R['name2act_hidden'] = 's2relu'
@@ -607,15 +614,15 @@ if __name__ == "__main__":
         R['sfourier'] = 0.5
         # R['sfourier'] = 1.0
     elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sinAddcos':
-        R['sfourier'] = 0.5
-        # R['sfourier'] = 1.0
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
     elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sin':
         # R['sfourier'] = 0.5
         R['sfourier'] = 1.0
     else:
-        # R['sfourier'] = 1.0
+        R['sfourier'] = 1.0
         # R['sfourier'] = 5.0
-        R['sfourier'] = 0.75
+        # R['sfourier'] = 0.75
 
     if R['model2NN'] == 'Wavelet_DNN':
         # R['freq'] = np.concatenate(([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], np.arange(1, 100 - 9)), axis=0)

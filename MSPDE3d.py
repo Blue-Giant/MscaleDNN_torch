@@ -27,7 +27,7 @@ import DNN_Log_Print
 class MscaleDNN(tn.Module):
     def __init__(self, input_dim=4, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='relu',
                  name2actHidden='relu', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
-                 factor2freq=None, sFourier=1.0, use_gpu=False, No2GPU=0):
+                 factor2freq=None, sFourier=1.0, repeat_highFreq=True, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(
@@ -38,12 +38,12 @@ class MscaleDNN(tn.Module):
             self.DNN = DNN_base.Dense_ScaleNet(
                 indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
                 actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
-                to_gpu=use_gpu, gpu_no=No2GPU)
+                repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
         elif 'FOURIER_DNN' == str.upper(Model_name) or 'DNN_FOURIERBASE' == str.upper(Model_name):
             self.DNN = DNN_base.Dense_FourierNet(
                 indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
                 actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
-                to_gpu=use_gpu, gpu_no=No2GPU)
+                repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
 
         self.input_dim = input_dim
         self.out_dim = out_dim
@@ -515,13 +515,24 @@ if __name__ == "__main__":
         # R['hidden_layers'] = (2000, 1500, 1000, 500, 250)
 
     # &&&&&&&&&&&&&&&&&&& 激活函数的选择 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    # R['activate_func'] = 'relu'
-    # R['activate_func'] = 'tanh'
-    # R['activate_func']' = leaky_relu'
-    # R['activate_func'] = 'srelu'
-    R['activate_func'] = 's2relu'
-    # R['activate_func'] = 'elu'
-    # R['activate_func'] = 'phi'
+    # R['name2act_in'] = 'relu'
+    R['name2act_in'] = 'tanh'
+    # R['name2act_in'] = 'sin'
+    # R['name2act_in'] = 'enhance_tanh'
+    # R['name2act_in'] = 's2relu'
+
+    # R['name2act_hidden'] = 'relu'
+    R['name2act_hidden'] = 'tanh'
+    # R['name2act_hidden'] = 'enhance_tanh'
+    # R['name2act_hidden']' = leaky_relu'
+    # R['name2act_hidden'] = 'srelu'
+    # R['name2act_hidden'] = 's2relu'
+    # R['name2act_hidden'] = 'sin'
+    # R['name2act_hidden'] = 'sinAddcos'
+    # R['name2act_hidden'] = 'elu'
+    # R['name2act_hidden'] = 'phi'
+
+    R['name2act_out'] = 'linear'
 
     if R['model'] == 'DNN_FourierBase' and R['activate_func'] == 'tanh':
         R['sfourier'] = 0.5
