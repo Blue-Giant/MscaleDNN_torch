@@ -2,6 +2,7 @@
 @author: LXA
  Date: 2021 年 11 月 11 日
  Modifying on 2022 年 9月 2 日 ~~~~ 2022 年 9月 12 日
+ Final version: 2022年 11 月 11 日
 """
 import os
 import sys
@@ -69,7 +70,7 @@ class MscaleDNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_it2Laplace(self, XY=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
+    def loss_it2Laplace(self, XY=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', scale2lncosh=0.1):
         assert (XY is not None)
         assert (fside is not None)
 
@@ -88,29 +89,47 @@ class MscaleDNN(tn.Module):
         UNN = self.DNN(XY, scale=self.factor2freq, sFourier=self.sFourier)
         grad2UNN = torch.autograd.grad(UNN, XY, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
         dUNN = grad2UNN[0]
+        try:
+            if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
+                dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
+                loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
+                loss_it = torch.mean(loss_it_ritz)
+            elif str.lower(loss_type) == 'l2_loss':
+                dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
+                dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
 
-        if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
-            dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
-            loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
-            loss_it = torch.mean(loss_it_ritz)
-        elif str.lower(loss_type) == 'l2_loss':
-            dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
-            dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
+                dUNNxxy = torch.autograd.grad(dUNN2x, XY, grad_outputs=torch.ones_like(X), create_graph=True,
+                                              retain_graph=True)[0]
+                dUNNyxy = torch.autograd.grad(dUNN2y, XY, grad_outputs=torch.ones_like(X), create_graph=True,
+                                              retain_graph=True)[0]
 
-            dUNNxxy = torch.autograd.grad(dUNN2x, XY, grad_outputs=torch.ones_like(X), create_graph=True,
-                                          retain_graph=True)[0]
-            dUNNyxy = torch.autograd.grad(dUNN2y, XY, grad_outputs=torch.ones_like(X), create_graph=True,
-                                          retain_graph=True)[0]
+                dUNNxx = torch.reshape(dUNNxxy[:, 0], shape=[-1, 1])
+                dUNNyy = torch.reshape(dUNNyxy[:, 1], shape=[-1, 1])
+                # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
+                loss_it_L2 = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
+                square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
+                loss_it = torch.mean(square_loss_it)
+            elif str.lower(loss_type) == 'lncosh_loss':
+                dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
+                dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
 
-            dUNNxx = torch.reshape(dUNNxxy[:, 0], shape=[-1, 1])
-            dUNNyy = torch.reshape(dUNNyxy[:, 1], shape=[-1, 1])
-            # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
-            loss_it_L2 = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
-            square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
-            loss_it = torch.mean(square_loss_it)
-        return UNN, loss_it
+                dUNNxxy = torch.autograd.grad(dUNN2x, XY, grad_outputs=torch.ones_like(X), create_graph=True,
+                                              retain_graph=True)[0]
+                dUNNyxy = torch.autograd.grad(dUNN2y, XY, grad_outputs=torch.ones_like(X), create_graph=True,
+                                              retain_graph=True)[0]
 
-    def loss2bd(self, XY_bd=None, Ubd_exact=None, if_lambda2Ubd=True):
+                dUNNxx = torch.reshape(dUNNxxy[:, 0], shape=[-1, 1])
+                dUNNyy = torch.reshape(dUNNyxy[:, 1], shape=[-1, 1])
+                # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
+                loss_it_temp = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
+                logcosh_loss_it = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * loss_it_temp))
+                loss_it = torch.mean(logcosh_loss_it)
+            return UNN, loss_it
+        except ValueError:
+            print('Error type for loss or no loss')
+            return
+
+    def loss2bd(self, XY_bd=None, Ubd_exact=None, if_lambda2Ubd=True, loss_type='ritz_loss', scale2lncosh=0.1):
         assert (XY_bd is not None)
         assert (Ubd_exact is not None)
 
@@ -127,9 +146,18 @@ class MscaleDNN(tn.Module):
             Ubd = Ubd_exact
 
         UNN_bd = self.DNN(XY_bd, scale=self.factor2freq, sFourier=self.sFourier)
-        loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
-        loss_bd = torch.mean(loss_bd_square)
-        return loss_bd
+        diff2bd = UNN_bd - Ubd
+        try:
+            if str.lower(loss_type) == 'l2_loss':
+                loss_bd_square = torch.mul(diff2bd, diff2bd)
+                loss_bd = torch.mean(loss_bd_square)
+            elif str.lower(loss_type) == 'lncosh_loss':
+                loss_bd_temp = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * diff2bd))
+                loss_bd = torch.mean(loss_bd_temp)
+            return loss_bd
+        except ValueError:
+            print('Error type for loss or no loss')
+            return
 
     def get_regularSum2WB(self):
         sum2WB = self.DNN.get_regular_sum2WB(self.opt2regular_WB)
@@ -312,12 +340,17 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xy_it_batch, fside=f, loss_type=R['loss_type'])
+            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xy_it_batch, fside=f, loss_type=R['loss_type'],
+                                                           scale2lncosh=R['scale2lncosh'])
 
-        loss_bd2left = mscalednn.loss2bd(XY_bd=xl_bd_batch, Ubd_exact=u_left)
-        loss_bd2right = mscalednn.loss2bd(XY_bd=xr_bd_batch, Ubd_exact=u_right)
-        loss_bd2bottom = mscalednn.loss2bd(XY_bd=yb_bd_batch, Ubd_exact=u_bottom)
-        loss_bd2top = mscalednn.loss2bd(XY_bd=yt_bd_batch, Ubd_exact=u_top)
+        loss_bd2left = mscalednn.loss2bd(XY_bd=xl_bd_batch, Ubd_exact=u_left,
+                                         loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
+        loss_bd2right = mscalednn.loss2bd(XY_bd=xr_bd_batch, Ubd_exact=u_right,
+                                          loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
+        loss_bd2bottom = mscalednn.loss2bd(XY_bd=yb_bd_batch, Ubd_exact=u_bottom,
+                                           loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
+        loss_bd2top = mscalednn.loss2bd(XY_bd=yt_bd_batch, Ubd_exact=u_top,
+                                        loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
         loss_bd = loss_bd2left + loss_bd2right + loss_bd2bottom + loss_bd2top
 
         PWB = penalty2WB * mscalednn.get_regularSum2WB()
@@ -538,8 +571,18 @@ if __name__ == "__main__":
 
     R['loss_type'] = 'L2_loss'                             # loss类型:L2 loss
     # R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
-    # R['loss_type'] = 'lncosh_loss2Ritz'
-    R['lambda2lncosh'] = 50.0
+    # R['loss_type'] = 'lncosh_loss'
+
+    # R['scale2lncosh'] = '0.01'
+    R['scale2lncosh'] = '0.05'
+    # R['scale2lncosh'] = '0.1'
+    # R['scale2lncosh'] = '0.5'
+    # R['scale2lncosh'] = '1'
+
+    R['loss_type2bd'] = 'l2_loss'
+
+    if R['loss_type'] == 'lncosh_loss':
+        R['loss_type2bd'] = 'lncosh_loss'
 
     R['optimizer_name'] = 'Adam'  # 优化器
     R['learning_rate'] = 2e-4  # 学习率

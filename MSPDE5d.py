@@ -2,6 +2,7 @@
 @author: LXA
  Date: 2021 年 11 月 11 日
  Modifying on 2022 年 9月 2 日 ~~~~ 2022 年 9月 12 日
+ Final version: 2022年 11 月 11 日
 """
 import os
 import sys
@@ -476,8 +477,20 @@ if __name__ == "__main__":
     R['testData_model'] = 'loadData'
     # R['testData_model'] = 'random_generate'
 
-    # R['loss_type'] = 'L2_loss'                        # loss类型:L2 loss
-    R['loss_type'] = 'variational_loss'                 # loss类型:PDE变分
+    R['loss_type'] = 'L2_loss'  # loss类型:L2 loss
+    # R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
+    # R['loss_type'] = 'lncosh_loss'
+
+    # R['scale2lncosh'] = '0.01'
+    R['scale2lncosh'] = '0.05'
+    # R['scale2lncosh'] = '0.1'
+    # R['scale2lncosh'] = '0.5'
+    # R['scale2lncosh'] = '1'
+
+    R['loss_type2bd'] = 'l2_loss'
+
+    if R['loss_type'] == 'lncosh_loss':
+        R['loss_type2bd'] = 'lncosh_loss'
 
     R['optimizer_name'] = 'Adam'                        # 优化器
     R['learning_rate'] = 2e-4                           # 学习率
@@ -503,14 +516,14 @@ if __name__ == "__main__":
     R['freqs'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
-    # R['model'] = 'DNN'
-    R['model'] = 'DNN_scale'
-    # R['model'] = 'DNN_adapt_scale'
-    # R['model'] = 'DNN_FourierBase'
-    # R['model'] = 'DNN_Sin+Cos_Base'
+    # R['model2NN'] = 'DNN'
+    # R['model2NN'] = 'Scale_DNN'
+    # R['model2NN'] = 'Adapt_scale_DNN'
+    R['model2NN'] = 'Fourier_DNN'
+    # R['model2NN'] = 'Wavelet_DNN'
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    if R['model'] == 'DNN_FourierBase':
+    if R['model2NN'] == 'DNN_FourierBase':
         R['hidden_layers'] = (250, 400, 400, 200, 200, 150)  # 250+500*400+400*400+400*200+200*200+200*150+150 = 510400
     else:
         # R['hidden_layers'] = (100, 10, 8, 6, 4)  # 测试
@@ -546,11 +559,26 @@ if __name__ == "__main__":
 
     R['name2act_out'] = 'linear'
 
-    if R['model'] == 'DNN_FourierBase' and R['activate_func'] == 'tanh':
+    if R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'tanh':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 's2relu':
         R['sfourier'] = 0.5
         # R['sfourier'] = 1.0
-    elif R['model'] == 'DNN_FourierBase' and R['activate_func'] == 's2relu':
-        R['sfourier'] = 0.5
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sinAddcos':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sin':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    else:
+        R['sfourier'] = 1.0
+        # R['sfourier'] = 5.0
+        # R['sfourier'] = 0.75
+
+    R['use_gpu'] = True
+
+    R['repeat_High_freq'] = True
 
     solve_Multiscale_PDE(R)
 

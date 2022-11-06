@@ -2,6 +2,7 @@
 @author: LXA
  Date: 2021 年 11 月 11 日
  Modifying on 2022 年 9月 2 日 ~~~~ 2022 年 9月 12 日
+ Final version: 2022年 11 月 11 日
 """
 import os
 import sys
@@ -69,7 +70,7 @@ class MscaleDNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_it2Laplace(self, XYZS=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
+    def loss_it2Laplace(self, XYZS=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', scale2lncosh=0.1):
         assert (XYZS is not None)
         assert (fside is not None)
 
@@ -90,37 +91,63 @@ class MscaleDNN(tn.Module):
         UNN = self.DNN(XYZS, scale=self.factor2freq, sFourier=self.sFourier)
         grad2UNN = torch.autograd.grad(UNN, XYZS, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
         dUNN = grad2UNN[0]
+        try:
+            if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
+                dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
+                loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
+                loss_it = torch.mean(loss_it_ritz)
+            elif str.lower(loss_type) == 'l2_loss':
+                dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
+                dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
+                dUNN2z = torch.reshape(dUNN[:, 2], shape=[-1, 1])
+                dUNN2s = torch.reshape(dUNN[:, 3], shape=[-1, 1])
 
-        if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
-            dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
-            loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
-            loss_it = torch.mean(loss_it_ritz)
-        elif str.lower(loss_type) == 'l2_loss':
-            dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
-            dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
-            dUNN2z = torch.reshape(dUNN[:, 2], shape=[-1, 1])
-            dUNN2s = torch.reshape(dUNN[:, 3], shape=[-1, 1])
+                dUNNxxyz = torch.autograd.grad(dUNN2x, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNyxyz = torch.autograd.grad(dUNN2y, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNzxyz = torch.autograd.grad(dUNN2z, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNSxyZ = torch.autograd.grad(dUNN2s, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNxx = torch.reshape(dUNNxxyz[:, 0], shape=[-1, 1])
+                dUNNyy = torch.reshape(dUNNyxyz[:, 1], shape=[-1, 1])
+                dUNNzz = torch.reshape(dUNNzxyz[:, 2], shape=[-1, 1])
+                dUNNss = torch.reshape(dUNNSxyZ[:, 3], shape=[-1, 1])
 
-            dUNNxxyz = torch.autograd.grad(dUNN2x, XYZS, grad_outputs=torch.ones_like(X),
-                                           create_graph=True, retain_graph=True)[0]
-            dUNNyxyz = torch.autograd.grad(dUNN2y, XYZS, grad_outputs=torch.ones_like(X),
-                                           create_graph=True, retain_graph=True)[0]
-            dUNNzxyz = torch.autograd.grad(dUNN2z, XYZS, grad_outputs=torch.ones_like(X),
-                                           create_graph=True, retain_graph=True)[0]
-            dUNNSxyZ = torch.autograd.grad(dUNN2s, XYZS, grad_outputs=torch.ones_like(X),
-                                           create_graph=True, retain_graph=True)[0]
-            dUNNxx = torch.reshape(dUNNxxyz[:, 0], shape=[-1, 1])
-            dUNNyy = torch.reshape(dUNNyxyz[:, 1], shape=[-1, 1])
-            dUNNzz = torch.reshape(dUNNzxyz[:, 2], shape=[-1, 1])
-            dUNNss = torch.reshape(dUNNSxyZ[:, 3], shape=[-1, 1])
+                # -Laplace U = f --> -Laplace U - f --> -(Laplace U + f)
+                loss_it_L2 = dUNNxx + dUNNyy + dUNNzz + dUNNss + torch.reshape(force_side, shape=[-1, 1])
+                square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
+                loss_it = torch.mean(square_loss_it)
+            elif str.lower(loss_type) == 'lncosh_loss':
+                dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
+                dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
+                dUNN2z = torch.reshape(dUNN[:, 2], shape=[-1, 1])
+                dUNN2s = torch.reshape(dUNN[:, 3], shape=[-1, 1])
 
-            # -Laplace U = f --> -Laplace U - f --> -(Laplace U + f)
-            loss_it_L2 = dUNNxx + dUNNyy + dUNNzz + dUNNss + torch.reshape(force_side, shape=[-1, 1])
-            square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
-            loss_it = torch.mean(square_loss_it)
-        return UNN, loss_it
+                dUNNxxyz = torch.autograd.grad(dUNN2x, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNyxyz = torch.autograd.grad(dUNN2y, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNzxyz = torch.autograd.grad(dUNN2z, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNSxyZ = torch.autograd.grad(dUNN2s, XYZS, grad_outputs=torch.ones_like(X),
+                                               create_graph=True, retain_graph=True)[0]
+                dUNNxx = torch.reshape(dUNNxxyz[:, 0], shape=[-1, 1])
+                dUNNyy = torch.reshape(dUNNyxyz[:, 1], shape=[-1, 1])
+                dUNNzz = torch.reshape(dUNNzxyz[:, 2], shape=[-1, 1])
+                dUNNss = torch.reshape(dUNNSxyZ[:, 3], shape=[-1, 1])
 
-    def loss2bd(self, XYZS_bd=None, Ubd_exact=None, if_lambda2Ubd=True):
+                # -Laplace U = f --> -Laplace U - f --> -(Laplace U + f)
+                loss_it_temp = dUNNxx + dUNNyy + dUNNzz + dUNNss + torch.reshape(force_side, shape=[-1, 1])
+                logcosh_loss_it = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * loss_it_temp))
+                loss_it = torch.mean(logcosh_loss_it)
+            return UNN, loss_it
+        except ValueError:
+            print('Error type for loss or no loss')
+            return
+
+    def loss2bd(self, XYZS_bd=None, Ubd_exact=None, if_lambda2Ubd=True, loss_type='ritz_loss', scale2lncosh=0.1):
         assert (XYZS_bd is not None)
         assert (Ubd_exact is not None)
 
@@ -139,9 +166,18 @@ class MscaleDNN(tn.Module):
             Ubd = Ubd_exact
 
         UNN_bd = self.DNN(XYZS_bd, scale=self.factor2freq, sFourier=self.sFourier)
-        loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
-        loss_bd = torch.mean(loss_bd_square)
-        return loss_bd
+        diff2bd = UNN_bd - Ubd
+        try:
+            if str.lower(loss_type) == 'l2_loss':
+                loss_bd_square = torch.mul(diff2bd, diff2bd)
+                loss_bd = torch.mean(loss_bd_square)
+            elif str.lower(loss_type) == 'lncosh_loss':
+                loss_bd_temp = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * diff2bd))
+                loss_bd = torch.mean(loss_bd_temp)
+            return loss_bd
+        except ValueError:
+            print('Error type for loss or no loss')
+            return
 
     def get_regularSum2WB(self):
         sum2WB = self.DNN.get_regular_sum2WB(self.opt2regular_WB)
@@ -190,7 +226,8 @@ def solve_Multiscale_PDE(R):
     mscalednn = MscaleDNN(input_dim=R['input_dim'], out_dim=R['output_dim'], hidden_layer=R['hidden_layers'],
                           Model_name=R['model2NN'], name2actIn=R['name2act_in'], name2actHidden=R['name2act_hidden'],
                           name2actOut=R['name2act_out'], opt2regular_WB='L0', type2numeric='float32',
-                          factor2freq=R['freq'], use_gpu=R['use_gpu'], No2GPU=R['gpuNo'])
+                          factor2freq=R['freq'], use_gpu=R['use_gpu'], No2GPU=R['gpuNo'],
+                          repeat_highFreq=R['repeat_High_freq'],)
     if True == R['use_gpu']:
         mscalednn = mscalednn.cuda(device='cuda:' + str(R['gpuNo']))
 
@@ -270,14 +307,14 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xyz_it_batch, fside=f, loss_type=R['loss_type'])
+            UNN2train, loss_it = mscalednn.loss_it2Laplace(XYZS=xyz_it_batch, fside=f, loss_type=R['loss_type'])
 
-        loss_bd2left = mscalednn.loss2bd(XYZ_bd=xyz_left_batch, Ubd_exact=u_left)
-        loss_bd2right = mscalednn.loss2bd(XYZ_bd=xyz_right_batch, Ubd_exact=u_right)
-        loss_bd2bottom = mscalednn.loss2bd(XYZ_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
-        loss_bd2top = mscalednn.loss2bd(XYZ_bd=xyz_top_batch, Ubd_exact=u_top)
-        loss_bd2front = mscalednn.loss2bd(XYZ_bd=xyz_front_batch, Ubd_exact=u_front)
-        loss_bd2behind = mscalednn.loss2bd(XYZ_bd=xyz_behind_batch, Ubd_exact=u_behind)
+        loss_bd2left = mscalednn.loss2bd(XYZS_bd=xyz_left_batch, Ubd_exact=u_left)
+        loss_bd2right = mscalednn.loss2bd(XYZS_bd=xyz_right_batch, Ubd_exact=u_right)
+        loss_bd2bottom = mscalednn.loss2bd(XYZS_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
+        loss_bd2top = mscalednn.loss2bd(XYZS_bd=xyz_top_batch, Ubd_exact=u_top)
+        loss_bd2front = mscalednn.loss2bd(XYZS_bd=xyz_front_batch, Ubd_exact=u_front)
+        loss_bd2behind = mscalednn.loss2bd(XYZS_bd=xyz_behind_batch, Ubd_exact=u_behind)
         loss_bd = loss_bd2left + loss_bd2right + loss_bd2bottom + loss_bd2top + loss_bd2front + loss_bd2behind
 
         PWB = penalty2WB * mscalednn.get_regularSum2WB()
@@ -312,10 +349,10 @@ def solve_Multiscale_PDE(R):
             # ---------------------------   test network ----------------------------------------------
             test_epoch.append(i_epoch / 1000)
             if R['PDE_type'] == 'pLaplace_implicit':
-                UNN2test = mscalednn.evalue_MscaleDNN(XYZ_points=test_xyz_torch)
+                UNN2test = mscalednn.evalue_MscaleDNN(XYZS_points=test_xyz_torch)
                 Utrue2test = torch.from_numpy(u_true.astype(np.float32))
             else:
-                UNN2test = mscalednn.evalue_MscaleDNN(XYZ_points=test_xyz_torch)
+                UNN2test = mscalednn.evalue_MscaleDNN(XYZS_points=test_xyz_torch)
                 Utrue2test = u_true(torch.reshape(test_xyz_torch[:, 0], shape=[-1, 1]),
                                     torch.reshape(test_xyz_torch[:, 1], shape=[-1, 1]),
                                     torch.reshape(test_xyz_torch[:, 2], shape=[-1, 1]))
@@ -470,8 +507,20 @@ if __name__ == "__main__":
     R['testData_model'] = 'loadData'
     # R['testData_model'] = 'random_generate'
 
-    # R['loss_type'] = 'L2_loss'                        # loss类型:L2 loss
-    R['loss_type'] = 'variational_loss'                 # loss类型:PDE变分
+    R['loss_type'] = 'L2_loss'  # loss类型:L2 loss
+    # R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
+    # R['loss_type'] = 'lncosh_loss'
+
+    # R['scale2lncosh'] = '0.01'
+    R['scale2lncosh'] = '0.05'
+    # R['scale2lncosh'] = '0.1'
+    # R['scale2lncosh'] = '0.5'
+    # R['scale2lncosh'] = '1'
+
+    R['loss_type2bd'] = 'l2_loss'
+
+    if R['loss_type'] == 'lncosh_loss':
+        R['loss_type2bd'] = 'lncosh_loss'
 
     R['optimizer_name'] = 'Adam'                        # 优化器
     R['learning_rate'] = 2e-4                           # 学习率
@@ -497,14 +546,14 @@ if __name__ == "__main__":
     R['freqs'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
-    # R['model'] = 'DNN'
-    R['model'] = 'DNN_scale'
-    # R['model'] = 'DNN_adapt_scale'
-    # R['model'] = 'DNN_FourierBase'
-    # R['model'] = 'DNN_Sin+Cos_Base'
+    # R['model2NN'] = 'DNN'
+    # R['model2NN'] = 'Scale_DNN'
+    # R['model2NN'] = 'Adapt_scale_DNN'
+    R['model2NN'] = 'Fourier_DNN'
+    # R['model2NN'] = 'Wavelet_DNN'
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    if R['model'] == 'DNN_FourierBase':
+    if R['model2NN'] == 'DNN_FourierBase':
         R['hidden_layers'] = (250, 400, 400, 200, 200, 150)  # 250+500*400+400*400+400*200+200*200+200*150+150 = 510400
     else:
         # R['hidden_layers'] = (100, 10, 8, 6, 4)  # 测试
@@ -540,11 +589,26 @@ if __name__ == "__main__":
 
     R['name2act_out'] = 'linear'
 
-    if R['model'] == 'DNN_FourierBase' and R['activate_func'] == 'tanh':
+    if R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'tanh':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 's2relu':
         R['sfourier'] = 0.5
         # R['sfourier'] = 1.0
-    elif R['model'] == 'DNN_FourierBase' and R['activate_func'] == 's2relu':
-        R['sfourier'] = 0.5
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sinAddcos':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sin':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
+    else:
+        R['sfourier'] = 1.0
+        # R['sfourier'] = 5.0
+        # R['sfourier'] = 0.75
+
+    R['use_gpu'] = True
+
+    R['repeat_High_freq'] = True
 
     solve_Multiscale_PDE(R)
 

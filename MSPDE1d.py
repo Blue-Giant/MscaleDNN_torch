@@ -2,6 +2,7 @@
 @author: LXA
  Date: 2021 年 11 月 11 日
  Modifying on 2022 年 9月 2 日 ~~~~ 2022 年 9月 12 日
+ Final version: 2022年 11 月 11 日
 """
 import os
 import sys
@@ -27,6 +28,21 @@ class MscaleDNN(tn.Module):
                  name2actHidden='tanh', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
                  factor2freq=None, sFourier=1.0, repeat_highFreq=True, use_gpu=False, No2GPU=0):
         super(MscaleDNN, self).__init__()
+        if 'DNN' == str.upper(Model_name):
+            self.DNN = DNN_base.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
+                                              name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
+                                              actName2out=name2actOut, type2float=type2numeric,
+                                              to_gpu=use_gpu, gpu_no=No2GPU)
+        elif 'SCALE_DNN' == str.upper(Model_name) or 'DNN_SCALE' == str.upper(Model_name):
+            self.DNN = DNN_base.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
+                                               name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
+                                               actName2out=name2actOut, type2float=type2numeric,
+                                               repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
+        elif 'FOURIER_DNN' == str.upper(Model_name) or 'DNN_FOURIERBASE' == str.upper(Model_name):
+            self.DNN = DNN_base.Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
+                                                 name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
+                                                 actName2out=name2actOut, type2float=type2numeric,
+                                                 repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
         self.input_dim = input_dim
         self.out_dim = out_dim
         self.hidden_layer = hidden_layer
@@ -37,22 +53,6 @@ class MscaleDNN(tn.Module):
         self.factor2freq = factor2freq
         self.sFourier = sFourier
         self.opt2regular_WB = opt2regular_WB
-
-        if Model_name == 'Fourier_DNN':
-            self.DNN = DNN_base.Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
-                                                 name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                                 actName2out=name2actOut, type2float=type2numeric,
-                                                 repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
-        elif Model_name == 'Scale_DNN':
-            self.DNN = DNN_base.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
-                                               name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                               actName2out=name2actOut, type2float=type2numeric,
-                                               repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
-        else:
-            self.DNN = DNN_base.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
-                                              name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                              actName2out=name2actOut, type2float=type2numeric,
-                                              to_gpu=use_gpu, gpu_no=No2GPU)
 
         if type2numeric == 'float32':
             self.float_type = torch.float32
@@ -67,7 +67,7 @@ class MscaleDNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_it2Laplace(self, X=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
+    def loss_it2Laplace(self, X=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', scale2lncosh=0.5):
         assert (X is not None)
         assert (fside is not None)
 
@@ -87,22 +87,34 @@ class MscaleDNN(tn.Module):
                                         create_graph=True, retain_graph=True)
         dUNN = grad2UNNx[0]
 
-        if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
-            dUNN_Norm = torch.reshape(torch.sqrt(torch.sum(torch.mul(dUNN, dUNN), dim=-1)), shape=[-1, 1])  # 按行求和
-            dUNN_2Norm = torch.mul(dUNN_Norm, dUNN_Norm)
-            loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
-            loss_it = torch.mean(loss_it_ritz)
-        elif str.lower(loss_type) == 'l2_loss':
-            grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones(X.shape),
-                                             create_graph=True, retain_graph=True)
-            dUNNxx = grad2UNNxx[0]
-            # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
-            loss_it_L2 = dUNNxx + torch.reshape(force_side, shape=[-1, 1])
-            square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
-            loss_it = torch.mean(square_loss_it)
-        return UNN, loss_it
+        try:
+            if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
+                dUNN_Norm = torch.reshape(torch.sqrt(torch.sum(torch.mul(dUNN, dUNN), dim=-1)), shape=[-1, 1])  # 按行求和
+                dUNN_2Norm = torch.mul(dUNN_Norm, dUNN_Norm)
+                loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
+                loss_it = torch.mean(loss_it_ritz)
+            elif str.lower(loss_type) == 'l2_loss':
+                grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones(X.shape),
+                                                 create_graph=True, retain_graph=True)
+                dUNNxx = grad2UNNxx[0]
+                # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
+                loss_it_L2 = dUNNxx + torch.reshape(force_side, shape=[-1, 1])
+                square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
+                loss_it = torch.mean(square_loss_it)
+            elif str.lower(loss_type) == 'lncosh_loss':
+                grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones(X.shape),
+                                                 create_graph=True, retain_graph=True)
+                dUNNxx = grad2UNNxx[0]
+                # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
+                loss_it_temp = dUNNxx + torch.reshape(force_side, shape=[-1, 1])
+                logcosh_loss_it = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * loss_it_temp))
+                loss_it = torch.mean(logcosh_loss_it)
+            return UNN, loss_it
+        except ValueError:
+            print('Error type for loss or no loss')
+            return
 
-    def loss2bd(self, X_bd=None, Ubd_exact=None, if_lambda2Ubd=True):
+    def loss2bd(self, X_bd=None, Ubd_exact=None, if_lambda2Ubd=True, loss_type='l2_loss', scale2lncosh=0.5):
         assert (X_bd is not None)
         assert (Ubd_exact is not None)
 
@@ -117,9 +129,18 @@ class MscaleDNN(tn.Module):
             Ubd = Ubd_exact
 
         UNN_bd = self.DNN(X_bd, scale=self.factor2freq, sFourier=self.sFourier)
-        loss_bd_square = torch.mul(UNN_bd - Ubd, UNN_bd - Ubd)
-        loss_bd = torch.mean(loss_bd_square)
-        return loss_bd
+        diff2bd = UNN_bd - Ubd
+        try:
+            if str.lower(loss_type) == 'l2_loss':
+                loss_bd_square = torch.mul(diff2bd, diff2bd)
+                loss_bd = torch.mean(loss_bd_square)
+            elif str.lower(loss_type) == 'lncosh_loss':
+                loss_bd_square = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * diff2bd))
+                loss_bd = torch.mean(loss_bd_square)
+            return loss_bd
+        except ValueError:
+            print('Error type for loss or no loss')
+            return
 
     def get_regularSum2WB(self):
         sum2WB = self.DNN.get_regular_sum2WB(self.opt2regular_WB)
@@ -234,10 +255,12 @@ def solve_Multiscale_PDE(R):
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
             UNN2train, loss_it = mscalednn.loss_it2Laplace(X=x_it_batch, fside=f, if_lambda2fside=True,
-                                                           loss_type=R['loss_type'])
+                                                           loss_type=R['loss_type'], scale2lncosh=R['scale2lncosh'])
 
-        loss_bd2left = mscalednn.loss2bd(X_bd=xl_bd_batch, Ubd_exact=uleft, if_lambda2Ubd=True)
-        loss_bd2right = mscalednn.loss2bd(X_bd=xr_bd_batch, Ubd_exact=uright, if_lambda2Ubd=True)
+        loss_bd2left = mscalednn.loss2bd(X_bd=xl_bd_batch, Ubd_exact=uleft, if_lambda2Ubd=True,
+                                         loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
+        loss_bd2right = mscalednn.loss2bd(X_bd=xr_bd_batch, Ubd_exact=uright, if_lambda2Ubd=True,
+                                          loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
         loss_bd = loss_bd2left + loss_bd2right
         pwb = penalty2WB*mscalednn.get_regularSum2WB()
         loss = loss_it + temp_penalty_bd*loss_bd + pwb
@@ -269,7 +292,7 @@ def solve_Multiscale_PDE(R):
             unn2test = mscalednn.evaluate_MscaleDNN(X_points=test_x_bach)
             Uexact2test = utrue(test_x_bach)
 
-            point_square_error = torch.mul(Uexact2test - unn2test)
+            point_square_error = torch.square(Uexact2test - unn2test)
             test_mse = torch.mean(point_square_error)
             test_rel = test_mse/torch.mean(torch.mul(Uexact2test, Uexact2test))
 
@@ -394,11 +417,24 @@ if __name__ == "__main__":
     # R['testData_model'] = 'random_generate'
 
     # R['loss_type'] = 'L2_loss'                     # L2 loss
+    # R['loss_type'] = 'lncosh_loss'                 # lncosh_loss
     R['loss_type'] = 'variational_loss'              # PDE变分
+
+    R['loss_type2bd'] = 'L2_loss'                     # L2 loss
+
+    # R['scale2lncosh'] = '0.01'
+    R['scale2lncosh'] = '0.05'
+    # R['scale2lncosh'] = '0.1'
+    # R['scale2lncosh'] = '0.5'
+    # R['scale2lncosh'] = '1'
 
     if R['loss_type'] == 'L2_loss':
         R['batch_size2interior'] = 15000             # 内部训练数据的批大小
         R['batch_size2boundary'] = 2500              # 边界训练数据大小
+    if R['loss_type'] == 'lncosh_loss':
+        R['batch_size2interior'] = 15000             # 内部训练数据的批大小
+        R['batch_size2boundary'] = 2500              # 边界训练数据大小
+        R['loss_type2bd'] = 'lncosh_loss'            # lncosh_loss
 
     R['optimizer_name'] = 'Adam'                     # 优化器
     R['learning_rate'] = 2e-4                        # 学习率
