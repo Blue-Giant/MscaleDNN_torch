@@ -143,7 +143,7 @@ class MscaleDNN(tn.Module):
             return
 
     def get_regularSum2WB(self):
-        sum2WB = self.DNN.get_regular_sum2WB(self.opt2regular_WB)
+        sum2WB = self.DNN.get_regular_sum2WB(regular_model=self.opt2regular_WB)
         return sum2WB
 
     def evaluate_MscaleDNN(self, X_points=None):

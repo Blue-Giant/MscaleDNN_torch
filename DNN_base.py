@@ -129,7 +129,20 @@ class DenseNet(tn.Module):
             tn.init.uniform_(out_layer.bias, -1, 1)
             self.dense_layers.append(out_layer)
 
-    def get_regular_sum2WB(self, regular_model='L2'):
+        if type2float == 'float32':
+            self.float_type = torch.float32
+        elif type2float == 'float64':
+            self.float_type = torch.float64
+        elif type2float == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = to_gpu
+        if to_gpu:
+            self.opt2device = 'cuda:' + str(gpu_no)
+        else:
+            self.opt2device = 'cpu'
+
+    def get_regular_sum2WB(self, regular_model='L0'):
         regular_w = 0
         regular_b = 0
         if regular_model == 'L1':
@@ -140,6 +153,9 @@ class DenseNet(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.square(layer.weight))
                 regular_b = regular_b + torch.sum(torch.square(layer.bias))
+        else:
+            regular_w = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
+            regular_b = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
         return regular_w + regular_b
 
     def get_regular_sum2Fourier(self, regular_model='L2'):
@@ -158,6 +174,9 @@ class DenseNet(tn.Module):
                 if i_layer != 0:
                     regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
                 i_layer = i_layer + 1
+        else:
+            regular_w = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
+            regular_b = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
         return regular_w + regular_b
 
     def forward(self, inputs, scale=None, sFourier=0.5):
@@ -277,7 +296,20 @@ class Dense_Net(tn.Module):
             tn.init.uniform_(out_layer.bias, -1, 1)
             self.dense_layers.append(out_layer)
 
-    def get_regular_sum2WB(self, regular_model='L2'):
+        if type2float == 'float32':
+            self.float_type = torch.float32
+        elif type2float == 'float64':
+            self.float_type = torch.float64
+        elif type2float == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = to_gpu
+        if to_gpu:
+            self.opt2device = 'cuda:' + str(gpu_no)
+        else:
+            self.opt2device = 'cpu'
+
+    def get_regular_sum2WB(self, regular_model='L0'):
         regular_w = 0
         regular_b = 0
         if regular_model == 'L1':
@@ -288,6 +320,9 @@ class Dense_Net(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.square(layer.weight))
                 regular_b = regular_b + torch.sum(torch.square(layer.bias))
+        else:
+            regular_w = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
+            regular_b = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
         return regular_w + regular_b
 
     def forward(self, inputs, scale=None, training=None, mask=None):
@@ -387,7 +422,20 @@ class Pure_DenseNet(tn.Module):
         tn.init.uniform_(out_layer.bias, -1, 1)
         self.dense_layers.append(out_layer)
 
-    def get_regular_sum2WB(self, regular_model='L2'):
+        if type2float == 'float32':
+            self.float_type = torch.float32
+        elif type2float == 'float64':
+            self.float_type = torch.float64
+        elif type2float == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = to_gpu
+        if to_gpu:
+            self.opt2device = 'cuda:' + str(gpu_no)
+        else:
+            self.opt2device = 'cpu'
+
+    def get_regular_sum2WB(self, regular_model='L0'):
         regular_w = 0
         regular_b = 0
         if regular_model == 'L1':
@@ -398,6 +446,9 @@ class Pure_DenseNet(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.mul(layer.weight, layer.weight))
                 regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
+        else:
+            regular_w = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
+            regular_b = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
         return regular_w + regular_b
 
     def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
@@ -469,7 +520,20 @@ class Dense_ScaleNet(tn.Module):
         tn.init.uniform_(out_layer.bias, -1, 1)
         self.dense_layers.append(out_layer)
 
-    def get_regular_sum2WB(self, regular_model='L2'):
+        if type2float == 'float32':
+            self.float_type = torch.float32
+        elif type2float == 'float64':
+            self.float_type = torch.float64
+        elif type2float == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = to_gpu
+        if to_gpu:
+            self.opt2device = 'cuda:' + str(gpu_no)
+        else:
+            self.opt2device = 'cpu'
+
+    def get_regular_sum2WB(self, regular_model='L0'):
         regular_w = 0
         regular_b = 0
         if regular_model == 'L1':
@@ -480,6 +544,9 @@ class Dense_ScaleNet(tn.Module):
             for layer in self.dense_layers:
                 regular_w = regular_w + torch.sum(torch.mul(layer.weight, layer.weight))
                 regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
+        else:
+            regular_w = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
+            regular_b = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
         return regular_w + regular_b
 
     def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
@@ -572,7 +639,20 @@ class Dense_FourierNet(tn.Module):
         tn.init.uniform_(out_layer.bias, -1, 1)
         self.dense_layers.append(out_layer)
 
-    def get_regular_sum2WB(self, regular_model='L2'):
+        if type2float == 'float32':
+            self.float_type = torch.float32
+        elif type2float == 'float64':
+            self.float_type = torch.float64
+        elif type2float == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = to_gpu
+        if to_gpu:
+            self.opt2device = 'cuda:' + str(gpu_no)
+        else:
+            self.opt2device = 'cpu'
+
+    def get_regular_sum2WB(self, regular_model='L0'):
         regular_w = 0.0
         regular_b = 0.0
         i_layer = 0
@@ -588,6 +668,9 @@ class Dense_FourierNet(tn.Module):
                 if i_layer != 0:
                     regular_b = regular_b + torch.sum(torch.mul(layer.bias, layer.bias))
                 i_layer = i_layer + 1
+        else:
+            regular_w = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
+            regular_b = torch.tensor(0.0, dtype=self.float_type, device=self.opt2device)
         return regular_w + regular_b
 
     def forward(self, inputs, scale=None, sFourier=1.0, training=None, mask=None):
@@ -629,59 +712,106 @@ class Dense_FourierNet(tn.Module):
         return H
 
 
-# This is an example for using the above module
-class DNN(tn.Module):
-    def __init__(self, dim_in=2, dim_out=1, hidden_layers=None, name2Model='DNN', actName_in='tanh',
-                 actName_hidden='tanh', actName_out='linear', use_gpu=False, no2gpu=0):
-        super(DNN, self).__init__()
-        self.name2Model = name2Model
-        self.dim_in = dim_in
-        self.dim_out = dim_out
-        if name2Model == 'DNN':
-            self.DNN = Pure_DenseNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
-                                     actName2in=actName_in, actName=actName_hidden, actName2out=actName_out)
-        elif name2Model == 'Scale_DNN':
-            self.DNN = Dense_ScaleNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
-                                      actName2in=actName_in, actName=actName_hidden, actName2out=actName_out,
-                                      to_gpu=use_gpu, gpu_no=no2gpu)
-        elif name2Model == 'Fourier_DNN':
-            self.DNN = Dense_FourierNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
-                                        actName2in=actName_in, actName=actName_hidden, actName2out=actName_out,
-                                        to_gpu=use_gpu, gpu_no=no2gpu)
-        else:
-            self.DNN = DenseNet(indim=dim_in, outdim=dim_out, hidden_units=hidden_layers, name2Model=name2Model,
-                                actName2in=actName_in, actName=actName_hidden, actName2out=actName_out,
-                                to_gpu=use_gpu, gpu_no=no2gpu)
+def func_test(x, in_dim=2, equa='eq1'):
+    if in_dim == 1 and equa == 'eq1':
+        out = np.sin(np.pi * x[:, 0]) + 0.1 * np.sin(3 * np.pi * x[:, 0]) + 0.01 * np.sin(10 * np.pi * x[:, 0])
+    if in_dim == 1 and equa == 'eq2':
+        out = np.sin(np.pi * x[:, 0]) + 0.1 * np.sin(3 * np.pi * x[:, 0]) + \
+              0.05 * np.sin(10 * np.pi * x[:, 0]) + 0.01 * np.sin(50 * np.pi * x[:, 0])
+    elif in_dim == 2:
+        out = np.sin(x[:, 0] * x[:, 0] + x[:, 1] * x[:, 1]) + 0.1 * np.sin(5 * np.pi * x[:, 0] * x[:, 0] + 3 * np.pi * x[:, 1] * x[:, 1]) + \
+              0.01 * np.sin(15 * np.pi * x[:, 0] * x[:, 0] + 20 * np.pi * x[:, 1] * x[:, 1])
 
-    def forward(self, x_input, freq=None):
-        out = self.DNN(x_input, scale=freq)
+    out = np.reshape(out, newshape=(-1, 1))
+    return out
+
+
+# This is an example for using the above module
+class DNN2TEST(tn.Module):
+    def __init__(self, input_dim=2, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='tanh',
+                 name2actHidden='tanh', name2actOut='linear', factor2freq=None, sFourier=1.0, use_gpu=False, no2gpu=0,
+                 opt2regular_WB='L0', type2numeric='float32', repeat_Highfreq=True):
+        super(DNN2TEST, self).__init__()
+        self.input_dim = input_dim
+        self.out_dim = out_dim
+        self.hidden_layer = hidden_layer
+        self.Model_name = Model_name
+        self.name2actIn = name2actIn
+        self.name2actHidden = name2actHidden
+        self.name2actOut = name2actOut
+        self.factor2freq = factor2freq
+        self.sFourier = sFourier
+        self.opt2regular_WB = opt2regular_WB
+        if str.upper(Model_name) == 'DNN':
+            self.DNN = Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
+                                     actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut,
+                                     type2float=type2numeric, to_gpu=use_gpu, gpu_no=no2gpu)
+        elif str.upper(Model_name) == 'SCALE_DNN':
+            self.DNN = Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
+                                      actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut,
+                                      type2float=type2numeric, to_gpu=use_gpu, gpu_no=no2gpu,
+                                      repeat_Highfreq=repeat_Highfreq)
+        elif str.upper(Model_name) == 'FOURIER_DNN':
+            self.DNN = Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
+                                        actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut,
+                                        type2float=type2numeric, to_gpu=use_gpu, gpu_no=no2gpu,
+                                        repeat_Highfreq=repeat_Highfreq)
+
+        if type2numeric == 'float32':
+            self.float_type = torch.float32
+        elif type2numeric == 'float64':
+            self.float_type = torch.float64
+        elif type2numeric == 'float16':
+            self.float_type = torch.float16
+
+        self.use_gpu = use_gpu
+        if use_gpu:
+            self.opt2device = 'cuda:' + str(no2gpu)
+        else:
+            self.opt2device = 'cpu'
+
+    def forward(self, x_input):
+        out = self.DNN(x_input, scale=self.factor2freq)
         return out
 
     def get_sum2wB(self):
-        if self.name2Model == 'DNN' or self.name2Model == 'Scale_DNN' or self.name2Model == 'Fourier_DNN':
-            sum2WB = self.DNN.get_regular_sum2WB()
+        sum2WB = self.DNN.get_regular_sum2WB(regular_model=self.opt2regular_WB)
         return sum2WB
 
-    def cal_l2loss(self, x_input=None, freq=None, y_input=None):
-        out = self.DNN(x_input, scale=freq)
+    def cal_l2loss(self, x_input=None, y_input=None):
+        out = self.DNN(x_input, scale=self.factor2freq)
         squre_loss = torch.mul(y_input - out, y_input - out)
         loss = torch.mean(squre_loss, dim=0)
         return loss, out
 
 
 def test_DNN():
-    batch_size = 10
+    batch_size = 100
+    # dim_in = 1
     dim_in = 2
     dim_out = 1
-    hidden_list = (10, 20, 10, 10, 20)
-    freq = np.array([1, 2, 3, 4], dtype=np.float32)
-    model_name = 'DNN'
-    init_lr = 0.01
-    max_it = 10000
-    with_gpu = True
+    act_func2In = 'tanh'
 
-    model = DNN(dim_in=dim_in, dim_out=dim_out, hidden_layers=hidden_list, name2Model=model_name, actName_in='tanh',
-                actName_hidden='tanh', use_gpu=with_gpu, no2gpu=0)
+    # act_func2Hidden = 'tanh'
+    # act_func2Hidden = 'Enhance_tanh'
+    act_func2Hidden = 'sin'
+    # act_func2Hidden = 'sinAddcos'
+    # act_func2Hidden = 'gelu'
+
+    act_func2Out = 'linear'
+
+    hidden_list = (50, 30, 10, 10, 20)
+    freq = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], dtype=np.float32)
+    # model_name = 'DNN'
+    model_name = 'Fourier_DNN'
+    init_lr = 0.01
+    max_it = 100000
+    with_gpu = True
+    highFreq_repeat = True
+
+    model = DNN2TEST(input_dim=dim_in, out_dim=dim_out, hidden_layer=hidden_list, Model_name=model_name,
+                     name2actIn=act_func2In, name2actHidden=act_func2Hidden, name2actOut=act_func2Out, factor2freq=freq,
+                     sFourier=1.0, use_gpu=with_gpu, no2gpu=0, repeat_Highfreq=highFreq_repeat)
     if with_gpu:
         model = model.cuda(device='cuda:'+str(0))
 
@@ -696,7 +826,7 @@ def test_DNN():
     # 定义更新学习率的方法
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch+1))
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.995)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 40, gamma=0.995)
     arr2epoch = []
     arr2loss = []
     arr2lr = []
@@ -704,34 +834,48 @@ def test_DNN():
         x = np.random.rand(batch_size, dim_in)
         x = x.astype(dtype=np.float32)
         torch_x = torch.from_numpy(x)
-        y = np.reshape(np.sin(x[:, 0] * x[:, 0] + x[:, 1] * x[:, 1]), newshape=(-1, 1))
+        y = func_test(x, in_dim=dim_in, equa='eq2')
         torch_y = torch.from_numpy(y)
         if with_gpu:
             torch_x = torch_x.cuda(device='cuda:'+str(0))
             torch_y = torch_y.cuda(device='cuda:' + str(0))
 
-        loss, prediction = model.cal_l2loss(x_input=torch_x, freq=freq, y_input=torch_y)
+        loss2data, prediction = model.cal_l2loss(x_input=torch_x, y_input=torch_y)
         sum2wb = model.get_sum2wB()
+        loss = loss2data + sum2wb
 
-        optimizer.zero_grad()  # 求导前先清零, 只要在下一次求导前清零即可
-        loss.backward()  # 求偏导
-        optimizer.step()  # 更新参数
+        optimizer.zero_grad()      # 求导前先清零, 只要在下一次求导前清零即可
+        loss.backward()            # 求偏导
+        optimizer.step()           # 更新参数
         scheduler.step()
 
         if i_epoch % 100 == 0:
-            print('i_epoch --- loss:', i_epoch, loss.item())
-            # print("第%d个epoch的学习率：%f" % (i_epoch, optimizer.param_groups[0]['lr']))
+            print('i_epoch ------- loss:', i_epoch, loss.item())
+            print("第%d个epoch的学习率：%.10f" % (i_epoch, optimizer.param_groups[0]['lr']))
+            arr2epoch.append(int(i_epoch/100))
             arr2loss.append(loss.item())
             arr2lr.append(optimizer.param_groups[0]['lr'])
 
-    plt.figure()
-    ax = plt.gca()
-    plt.plot(arr2loss, 'b-.', label='loss')
-    plt.xlabel('epoch/100', fontsize=14)
-    plt.ylabel('loss', fontsize=14)
-    plt.legend(fontsize=18)
-    ax.set_yscale('log')
-    plt.show()
+    if model_name == 'DNN':
+        plt.figure()
+        ax = plt.gca()
+        plt.plot(arr2loss, 'b-.', label='loss')
+        plt.xlabel('epoch/100', fontsize=14)
+        plt.ylabel('loss', fontsize=14)
+        plt.legend(fontsize=18)
+        plt.title('DNN')
+        ax.set_yscale('log')
+        plt.show()
+    else:
+        plt.figure()
+        ax = plt.gca()
+        plt.plot(arr2loss, 'b-.', label='loss')
+        plt.xlabel('epoch/100', fontsize=14)
+        plt.ylabel('loss', fontsize=14)
+        plt.legend(fontsize=18)
+        plt.title('Fourier_DNN')
+        ax.set_yscale('log')
+        plt.show()
 
     # plt.cla()
     # plt.plot(x[:, 0], x[:, 1], y, 'b*')
