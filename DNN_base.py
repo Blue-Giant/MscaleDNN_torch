@@ -527,7 +527,6 @@ class Dense_ScaleNet(tn.Module):
         elif type2float == 'float16':
             self.float_type = torch.float16
 
-        self.use_gpu = to_gpu
         if to_gpu:
             self.opt2device = 'cuda:' + str(gpu_no)
         else:
@@ -646,7 +645,6 @@ class Dense_FourierNet(tn.Module):
         elif type2float == 'float16':
             self.float_type = torch.float16
 
-        self.use_gpu = to_gpu
         if to_gpu:
             self.opt2device = 'cuda:' + str(gpu_no)
         else:
