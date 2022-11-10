@@ -2,6 +2,7 @@
 """
 Created on 2021.06.16
 modified on 2021.11.11
+Final version on 2022.11.11
 @author: LXA
 """
 import torch
@@ -54,6 +55,12 @@ class my_actFunc(tn.Module):
             out_x = tnf.sigmoid(x_input)
         elif str.lower(self.actName) == 'gelu':
             out_x = tnf.gelu(x_input)
+        elif str.lower(self.actName) == 'gcu':
+            out_x = x_input*torch.cos(x_input)
+        elif str.lower(self.actName) == 'mish':
+            out_x = tnf.mish(x_input)
+        elif str.lower(self.actName) == 'gauss':
+            out_x = torch.exp(-1.0 * x_input * x_input)
         else:
             out_x = x_input
         return out_x
@@ -136,7 +143,6 @@ class DenseNet(tn.Module):
         elif type2float == 'float16':
             self.float_type = torch.float16
 
-        self.use_gpu = to_gpu
         if to_gpu:
             self.opt2device = 'cuda:' + str(gpu_no)
         else:
@@ -303,7 +309,6 @@ class Dense_Net(tn.Module):
         elif type2float == 'float16':
             self.float_type = torch.float16
 
-        self.use_gpu = to_gpu
         if to_gpu:
             self.opt2device = 'cuda:' + str(gpu_no)
         else:
@@ -429,7 +434,6 @@ class Pure_DenseNet(tn.Module):
         elif type2float == 'float16':
             self.float_type = torch.float16
 
-        self.use_gpu = to_gpu
         if to_gpu:
             self.opt2device = 'cuda:' + str(gpu_no)
         else:

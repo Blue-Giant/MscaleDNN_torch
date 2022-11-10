@@ -481,11 +481,11 @@ if __name__ == "__main__":
     # R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
     # R['loss_type'] = 'lncosh_loss'
 
-    # R['scale2lncosh'] = '0.01'
-    R['scale2lncosh'] = '0.05'
-    # R['scale2lncosh'] = '0.1'
-    # R['scale2lncosh'] = '0.5'
-    # R['scale2lncosh'] = '1'
+    # R['scale2lncosh'] = 0.01
+    R['scale2lncosh'] = 0.05
+    # R['scale2lncosh'] = 0.1
+    # R['scale2lncosh'] = 0.5
+    # R['scale2lncosh'] = 1
 
     R['loss_type2bd'] = 'l2_loss'
 

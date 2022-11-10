@@ -31,8 +31,8 @@ class MscaleDNN(tn.Module):
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                               name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
-                                              actName2out=name2actOut, type2float=type2numeric,
-                                              to_gpu=use_gpu, gpu_no=No2GPU)
+                                              actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
+                                              gpu_no=No2GPU)
         elif 'SCALE_DNN' == str.upper(Model_name) or 'DNN_SCALE' == str.upper(Model_name):
             self.DNN = DNN_base.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
@@ -94,7 +94,7 @@ class MscaleDNN(tn.Module):
                 loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
                 loss_it = torch.mean(loss_it_ritz)
             elif str.lower(loss_type) == 'l2_loss':
-                grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones(X.shape),
+                grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones_like(X),
                                                  create_graph=True, retain_graph=True)
                 dUNNxx = grad2UNNxx[0]
                 # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
@@ -102,7 +102,7 @@ class MscaleDNN(tn.Module):
                 square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
                 loss_it = torch.mean(square_loss_it)
             elif str.lower(loss_type) == 'lncosh_loss':
-                grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones(X.shape),
+                grad2UNNxx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones_like(X),
                                                  create_graph=True, retain_graph=True)
                 dUNNxx = grad2UNNxx[0]
                 # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
@@ -422,11 +422,11 @@ if __name__ == "__main__":
 
     R['loss_type2bd'] = 'L2_loss'                     # L2 loss
 
-    # R['scale2lncosh'] = '0.01'
-    R['scale2lncosh'] = '0.05'
-    # R['scale2lncosh'] = '0.1'
-    # R['scale2lncosh'] = '0.5'
-    # R['scale2lncosh'] = '1'
+    # R['scale2lncosh'] = 0.01
+    R['scale2lncosh'] = 0.05
+    # R['scale2lncosh'] = 0.1
+    # R['scale2lncosh'] = 0.5
+    # R['scale2lncosh'] = 1
 
     if R['loss_type'] == 'L2_loss':
         R['batch_size2interior'] = 15000             # 内部训练数据的批大小
