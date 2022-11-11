@@ -29,4 +29,4 @@ The matlab codes in 2D辅助matlab代码/p=3Forier_scale are useful for E5.
 The matlab codes in 2D辅助matlab代码/p=3Subspace are useful for E6.
 
 # Others
-Based on the above codes(DNN frameworks), we further designed a new algorithm to solve multi-scale PDEs, one can refer to https://github.com/Blue-Giant/SubspaceDNN_tf1
+Based on the above codes(DNN frameworks), we construct the algorithm to solve multi-scale PDEs by means of Tensorflow, one can refer to https://github.com/Blue-Giant/MscaleDNN_tf1Class
