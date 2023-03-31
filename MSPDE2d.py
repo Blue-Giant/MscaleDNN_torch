@@ -29,6 +29,24 @@ class MscaleDNN(tn.Module):
     def __init__(self, input_dim=4, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='relu',
                  name2actHidden='relu', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
                  factor2freq=None, sFourier=1.0, repeat_highFreq=True, use_gpu=False, No2GPU=0):
+        """
+        initialing the class of MscaleDNN with given setups
+        Args:
+             input_dim:        the dimension of input data
+             out_dim:          the dimension of output data
+             hidden_layer:     the number of units for hidden layers(a tuple or a list)
+             Model_name:       the name of DNN model(DNN, ScaleDNN or FourierDNN)
+             name2actIn:       the name of activation function for input layer
+             name2actHidden:   the name of activation function for all hidden layers
+             name2actOut:      the name of activation function for all output layer
+             opt2regular_WB:   the option of regularing weights and biases
+             type2numeric:     the numerical type of float
+             factor2freq:      the scale vector for ScaleDNN or FourierDNN
+             sFourier:         the relaxation factor for FourierDNN
+             repeat_highFreq:  repeat the high-frequency scale-factor or not
+             use_gpu:          using cuda or not
+             No2GPU:           if your computer have more than one GPU, please assign the number of GPU
+        """
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(
@@ -70,7 +88,21 @@ class MscaleDNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_it2Laplace(self, XY=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', scale2lncosh=0.1):
+    def loss_in2Laplace(self, XY=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', scale2lncosh=0.1):
+        """
+        Calculating the loss of Laplace equation (*) in the interior points for given domain
+        -Laplace U = f,  in Omega
+        U = g            on Partial Omega
+        Args:
+             XY:              the input data of variable. ------  float, shape=[B,D]
+             fside:           the force side              ------  float, shape=[B,1]
+             if_lambda2fside: the force-side is a lambda function or an array  ------ Bool
+             loss_type:       the type of loss function(Ritz, L2, Lncosh)      ------ string
+             scale2lncosh:    if the loss is lncosh, using it                  ------- float
+        return:
+             UNN:             the output data
+             loss_in:         the output loss in the interior points for given domain
+        """
         assert (XY is not None)
         assert (fside is not None)
 
@@ -93,7 +125,7 @@ class MscaleDNN(tn.Module):
             if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
                 dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
                 loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
-                loss_it = torch.mean(loss_it_ritz)
+                loss_in = torch.mean(loss_it_ritz)
             elif str.lower(loss_type) == 'l2_loss':
                 dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
                 dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
@@ -108,7 +140,7 @@ class MscaleDNN(tn.Module):
                 # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
                 loss_it_L2 = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
                 square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
-                loss_it = torch.mean(square_loss_it)
+                loss_in = torch.mean(square_loss_it)
             elif str.lower(loss_type) == 'lncosh_loss':
                 dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
                 dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
@@ -123,13 +155,72 @@ class MscaleDNN(tn.Module):
                 # -Laplace U=f --> -Laplace U - f --> -(Laplace U + f)
                 loss_it_temp = torch.add(dUNNxx, dUNNyy) + torch.reshape(force_side, shape=[-1, 1])
                 logcosh_loss_it = (1 / scale2lncosh) * torch.log(torch.cosh(scale2lncosh * loss_it_temp))
-                loss_it = torch.mean(logcosh_loss_it)
-            return UNN, loss_it
+                loss_in = torch.mean(logcosh_loss_it)
+            return UNN, loss_in
         except ValueError:
             print('Error type for loss or no loss')
             return
 
+    def loss_in2pLaplace(self, XY=None, fside=None, if_lambda2fside=True, aside=None, if_lambda2aside=True, p_index=2,
+                         loss_type='ritz_loss', scale2lncosh=0.1):
+        """
+        Calculating the loss of Laplace equation (*) in the interior points for given domain
+        -Laplace U = f,  in Omega
+        U = g            on Partial Omega
+        Args:
+             XY:              the input data of variable. ------  float, shape=[B,D]
+             fside:           the force side              ------  float, shape=[B,1]
+             if_lambda2fside: the force-side is a lambda function or an array  ------ Bool
+             loss_type:       the type of loss function(Ritz, L2, Lncosh)      ------ string
+             scale2lncosh:    if the loss is lncosh, using it                  ------- float
+        return:
+             UNN:             the output data
+             loss_in:         the output loss in the interior points for given domain
+        """
+        assert (XY is not None)
+        assert (fside is not None)
+
+        shape2XY = XY.shape
+        lenght2XY_shape = len(shape2XY)
+        assert (lenght2XY_shape == 2)
+        assert (shape2XY[-1] == 2)
+        X = torch.reshape(XY[:, 0], shape=[-1, 1])
+        Y = torch.reshape(XY[:, 1], shape=[-1, 1])
+
+        if if_lambda2fside:
+            force_side = fside(X, Y)
+        else:
+            force_side = fside
+
+        if if_lambda2aside:
+            a_side = aside(X, Y)
+        else:
+            a_side = aside
+
+        UNN = self.DNN(XY, scale=self.factor2freq, sFourier=self.sFourier)
+
+        grad2UNN = torch.autograd.grad(UNN, XY, grad_outputs=torch.ones_like(X), create_graph=True, retain_graph=True)
+        dUNN = grad2UNN[0]
+        dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
+        AdUNN_2Norm = torch.multiply(a_side, dUNN_2Norm)
+        loss_it_ritz = (1.0/p_index)*AdUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
+        loss_in = torch.mean(loss_it_ritz)
+        return UNN, loss_in
+
     def loss2bd(self, XY_bd=None, Ubd_exact=None, if_lambda2Ubd=True, loss_type='ritz_loss', scale2lncosh=0.1):
+        """
+        Calculating the loss of Laplace equation (*) on the boundary points for given boundary
+        -Laplace U = f,  in Omega
+        U = g            on Partial Omega
+        Args:
+            XY_bd:         the input data of variable. ------  float, shape=[B,D]
+            Ubd_exact:     the exact function or array for boundary condition
+            if_lambda2Ubd: the Ubd_exact is a lambda function or an array  ------ Bool
+            loss_type:     the type of loss function(Ritz, L2, Lncosh)      ------ string
+            scale2lncosh:  if the loss is lncosh, using it                  ------- float
+        return:
+            loss_bd: the output loss on the boundary points for given boundary
+        """
         assert (XY_bd is not None)
         assert (Ubd_exact is not None)
 
@@ -160,10 +251,20 @@ class MscaleDNN(tn.Module):
             return
 
     def get_regularSum2WB(self):
+        """
+        Calculating the regularization sum of weights and biases
+        """
         sum2WB = self.DNN.get_regular_sum2WB(regular_model=self.opt2regular_WB)
         return sum2WB
 
-    def evalue_MscaleDNN(self, XY_points=None):
+    def evalulate_MscaleDNN(self, XY_points=None):
+        """
+        Evaluating the MscaleDNN for testing points
+        Args:
+            XY_points: the testing input data of variable. ------  float, shape=[B,D]
+        return:
+            UNN: the testing output
+        """
         assert (XY_points is not None)
         shape2XY = XY_points.shape
         lenght2XY_shape = len(shape2XY)
@@ -183,22 +284,22 @@ def solve_Multiscale_PDE(R):
     DNN_Log_Print.dictionary_out2file(R, log_fileout)
 
     # 问题需要的设置
-    batchsize_it = R['batch_size2interior']
-    batchsize_bd = R['batch_size2boundary']
+    batchsize_it = R['batch_size2interior']       # 内部点批大小
+    batchsize_bd = R['batch_size2boundary']       # 边界点批大小
 
     bd_penalty_init = R['init_boundary_penalty']  # Regularization parameter for boundary conditions
     penalty2WB = R['penalty2weight_biases']       # Regularization parameter for weights and biases
     learning_rate = R['learning_rate']
 
-    input_dim = R['input_dim']
-    out_dim = R['output_dim']
+    input_dim = R['input_dim']                    # 输入维度
+    out_dim = R['output_dim']                     # 输出维度
 
     # pLaplace 算子需要的额外设置, 先预设一下
     p_index = 2
     epsilon = 0.1
     mesh_number = 2
-    region_lb = 0.0
-    region_rt = 1.0
+    region_lb = 0.0                               # 矩形边界的左边和下边
+    region_rt = 1.0                               # 矩形边界的右边和上边
 
     if R['PDE_type'] == 'general_Laplace' or R['PDE_type'] == 'Laplace':
         # -laplace u = f
@@ -207,8 +308,6 @@ def solve_Multiscale_PDE(R):
         f, u_true, u_left, u_right, u_bottom, u_top = General_Laplace.get_infos2Laplace_2D(
             input_dim=input_dim, out_dim=out_dim, left_bottom=region_lb, right_top=region_rt, equa_name=R['equa_name'])
     elif R['PDE_type'] == 'pLaplace_implicit':
-        p_index = R['order2pLaplace_operator']
-        epsilon = R['epsilon']
         mesh_number = R['mesh_number']
         if R['equa_name'] == 'multi_scale2D_5':
             region_lb = 0.0
@@ -217,8 +316,8 @@ def solve_Multiscale_PDE(R):
             region_lb = -1.0
             region_rt = 1.0
         u_true, f, A_eps, u_left, u_right, u_bottom, u_top = MS_LaplaceEqs.get_infos2pLaplace_2D(
-            input_dim=input_dim, out_dim=out_dim, mesh_number=R['mesh_number'], intervalL=0.0, intervalR=1.0,
-            equa_name=R['equa_name'])
+            input_dim=input_dim, out_dim=out_dim, mesh_number=R['mesh_number'], pow_order2Aeps=R['order2Aeps_MSE4'],
+            intervalL=region_lb, intervalR=region_rt, equa_name=R['equa_name'])
     elif R['PDE_type'] == 'pLaplace_explicit':
         p_index = R['order2pLaplace_operator']
         epsilon = R['epsilon']
@@ -263,12 +362,15 @@ def solve_Multiscale_PDE(R):
     # 定义更新学习率的方法
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch+1))
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.995)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 25, gamma=0.995)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 50, gamma=0.99)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 100, gamma=0.975)
 
     loss_it_all, loss_bd_all, loss_all, train_mse_all, train_rel_all = [], [], [], [], []  # 空列表, 使用 append() 添加元素
     test_mse_all, test_rel_all = [], []
     test_epoch = []
 
+    # 测试数据的模式：随机生成或由matlab文件导入
     if R['testData_model'] == 'random_generate':
         # 生成测试数据，用于测试训练后的网络
         test_bach_size = 1600
@@ -278,7 +380,7 @@ def solve_Multiscale_PDE(R):
         # test_bach_size = 10000
         # size2test = 100
         test_xy_bach = dataUtilizer2torch.rand_it(test_bach_size, R['input_dim'], region_lb, region_rt, to_torch=False,
-                                                  to_float=True, to_cuda=False, gpu_no=R['gpuNo'])
+                                                  to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'])
         saveData.save_testData_or_solus2mat(test_xy_bach, dataName='testXY', outPath=R['FolderName'])
     else:
         if R['PDE_type'] == 'pLaplace_implicit' or R['PDE_type'] == 'pLaplace_explicit':
@@ -340,8 +442,12 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xy_it_batch, fside=f, loss_type=R['loss_type'],
-                                                           scale2lncosh=R['scale2lncosh'])
+            UNN2train, loss_it = mscalednn.loss_in2Laplace(XY=xy_it_batch, fside=f, if_lambda2fside=True,
+                                                           loss_type=R['loss_type'], scale2lncosh=R['scale2lncosh'])
+        else:
+            UNN2train, loss_it = mscalednn.loss_in2pLaplace(
+                XY=xy_it_batch, fside=f, if_lambda2fside=True, aside=A_eps, if_lambda2aside=True,
+                loss_type=R['loss_type'], scale2lncosh=R['scale2lncosh'])
 
         loss_bd2left = mscalednn.loss2bd(XY_bd=xl_bd_batch, Ubd_exact=u_left,
                                          loss_type=R['loss_type2bd'], scale2lncosh=R['scale2lncosh'])
@@ -378,6 +484,7 @@ def solve_Multiscale_PDE(R):
         train_mse_all.append(train_mse.item())
         train_rel_all.append(train_rel.item())
 
+        # 每1000个epoch输出日志到txt文档，并测试网络一次
         if i_epoch % 1000 == 0:
             run_times = time.time() - t0
             tmp_lr = optimizer.param_groups[0]['lr']
@@ -386,13 +493,15 @@ def solve_Multiscale_PDE(R):
                 train_mse.item(), train_rel.item(), log_out=log_fileout)
 
             test_epoch.append(i_epoch / 1000)
+            UNN2test = mscalednn.evalulate_MscaleDNN(XY_points=test_xy_torch)
             if R['PDE_type'] == 'pLaplace_implicit':
-                UNN2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
                 Utrue2test = torch.from_numpy(u_true.astype(np.float32))
             else:
-                UNN2test = mscalednn.evalue_MscaleDNN(XY_points=test_xy_torch)
                 Utrue2test = u_true(torch.reshape(test_xy_torch[:, 0], shape=[-1, 1]),
                                     torch.reshape(test_xy_torch[:, 1], shape=[-1, 1]))
+
+            if True == R['use_gpu']:
+                Utrue2test = Utrue2test.cuda(device='cuda:' + str(R['gpuNo']))
 
             point_square_error = torch.square(Utrue2test - UNN2test)
             test_mse = torch.mean(point_square_error)
@@ -402,17 +511,17 @@ def solve_Multiscale_PDE(R):
             DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
 
     # ------------------- save the training results into mat file and plot them -------------------------
-    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'],
+    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['name2act_in'],
                                          outPath=R['FolderName'])
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_in'], outPath=R['FolderName'])
 
     plotData.plotTrain_loss_1act_func(loss_it_all, lossType='loss_it', seedNo=R['seed'], outPath=R['FolderName'])
     plotData.plotTrain_loss_1act_func(loss_bd_all, lossType='loss_bd', seedNo=R['seed'], outPath=R['FolderName'],
                                       yaxis_scale=True)
     plotData.plotTrain_loss_1act_func(loss_all, lossType='loss', seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
-    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['activate_func'], seedNo=R['seed'],
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_in'], outPath=R['FolderName'])
+    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['name2act_in'], seedNo=R['seed'],
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
@@ -426,22 +535,21 @@ def solve_Multiscale_PDE(R):
         point_square_error_numpy = point_square_error.detach().numpy()
 
     saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue',
-                                 actName1=R['activate_func'], outPath=R['FolderName'])
+                                 actName1=R['name2act_in'], outPath=R['FolderName'])
 
     plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue',
                                     seedNo=R['seed'], outPath=R['FolderName'])
-    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['activate_func'],
+    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['name2act_in'],
                                     seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
-    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['activate_func'],
+    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['name2act_in'], outPath=R['FolderName'])
+    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['name2act_in'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['activate_func'],
-                                          outPath=R['FolderName'])
+    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['name2act_in'], outPath=R['FolderName'])
 
     plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test,
-                                     actName=R['activate_func'], seedNo=R['seed'], outPath=R['FolderName'])
+                                     actName=R['name2act_in'], seedNo=R['seed'], outPath=R['FolderName'])
 
 
 if __name__ == "__main__":
@@ -455,8 +563,8 @@ if __name__ == "__main__":
         matplotlib.use('Agg')
 
     # 文件保存路径设置
-    store_file = 'Laplace2D'
-    # store_file = 'pLaplace2D'
+    # store_file = 'Laplace2D'
+    store_file = 'pLaplace2D'
     # store_file = 'Boltzmann2D'
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(BASE_DIR)
@@ -546,6 +654,8 @@ if __name__ == "__main__":
         R['mesh_number'] = int(6)
         R['order2pLaplace_operator'] = float(2)
 
+    R['order2Aeps_MSE4'] = 5
+
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup of DNN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # 训练集的设置(内部和边界)
     if R['PDE_type'] == 'pLaplace_implicit':
@@ -566,11 +676,11 @@ if __name__ == "__main__":
         R['batch_size2boundary'] = 500  # 边界训练数据的批大小
 
     # 装载测试数据模式
-    # R['testData_model'] = 'loadData'
-    R['testData_model'] = 'random_generate'
+    R['testData_model'] = 'loadData'
+    # R['testData_model'] = 'random_generate'
 
-    R['loss_type'] = 'L2_loss'                             # loss类型:L2 loss
-    # R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
+    # R['loss_type'] = 'L2_loss'                             # loss类型:L2 loss
+    R['loss_type'] = 'variational_loss'                      # loss类型:PDE变分
     # R['loss_type'] = 'lncosh_loss'
 
     # R['scale2lncosh'] = 0.01
@@ -585,7 +695,10 @@ if __name__ == "__main__":
         R['loss_type2bd'] = 'lncosh_loss'
 
     R['optimizer_name'] = 'Adam'  # 优化器
-    R['learning_rate'] = 2e-4  # 学习率
+    # R['learning_rate'] = 0.01  # 学习率
+    # R['learning_rate'] = 0.005  # 学习率
+    R['learning_rate'] = 0.001  # 学习率
+    # R['learning_rate'] = 2e-4  # 学习率
     R['learning_rate_decay'] = 5e-5  # 学习率 decay
     R['train_model'] = 'union_training'
     # R['train_model'] = 'group2_training'
@@ -605,8 +718,8 @@ if __name__ == "__main__":
     R['init_boundary_penalty'] = 100                      # Regularization parameter for boundary conditions
 
     # 网络的频率范围设置
-    R['freq'] = np.concatenate(([1], np.arange(1, 30 - 1)), axis=0)
-    # R['freq'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
+    # R['freq'] = np.concatenate(([1], np.arange(1, 30 - 1)), axis=0)
+    R['freq'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
     # R['freq'] = np.random.normal(0, 100, 100)
 
     # R['freq'] = np.random.normal(0, 30, 30)
@@ -620,30 +733,29 @@ if __name__ == "__main__":
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
     if R['model2NN'] == 'Fourier_DNN':
-        # R['hidden_layers'] = (
-        # 125, 200, 200, 100, 100, 80)  # 1*125+250*200+200*200+200*100+100*100+100*50+50*1=128205
-        R['hidden_layers'] = (50, 80, 60, 60, 40)
+        R['hidden_layers'] = (125, 200, 100, 100, 80)  # 1*125+250*200+200*200+200*100+100*100+100*50+50*1=128205
+        # R['hidden_layers'] = (50, 80, 60, 60, 40)
     else:
         # R['hidden_layers'] = (100, 80, 80, 60, 40, 40)
         # R['hidden_layers'] = (200, 100, 80, 50, 30)
-        R['hidden_layers'] = (
-        250, 200, 200, 100, 100, 80)  # 1*250+250*200+200*200+200*100+100*100+100*50+50*1=128330
+        R['hidden_layers'] = (250, 200, 100, 100, 80)  # 1*250+250*200+200*200+200*100+100*100+100*50+50*1=128330
         # R['hidden_layers'] = (500, 400, 300, 200, 100)
         # R['hidden_layers'] = (500, 400, 300, 300, 200, 100)
 
     # &&&&&&&&&&&&&&&&&&& 激活函数的选择 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # R['name2act_in'] = 'relu'
-    R['name2act_in'] = 'tanh'
+    # R['name2act_in'] = 'tanh'
     # R['name2act_in'] = 'sin'
     # R['name2act_in'] = 'enhance_tanh'
-    # R['name2act_in'] = 's2relu'
+    R['name2act_in'] = 's2relu'
+    # R['name2act_in'] = 'sinAddcos'
 
     # R['name2act_hidden'] = 'relu'
-    R['name2act_hidden'] = 'tanh'
+    # R['name2act_hidden'] = 'tanh'
     # R['name2act_hidden'] = 'enhance_tanh'
     # R['name2act_hidden']' = leaky_relu'
     # R['name2act_hidden'] = 'srelu'
-    # R['name2act_hidden'] = 's2relu'
+    R['name2act_hidden'] = 's2relu'
     # R['name2act_hidden'] = 'sin'
     # R['name2act_hidden'] = 'sinAddcos'
     # R['name2act_hidden'] = 'elu'
