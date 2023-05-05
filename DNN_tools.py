@@ -46,7 +46,7 @@ def print_and_log_train_one_epoch(i_epoch, run_time, tmp_lr, temp_penalty_bd, pw
                                                   loss_bd_tmp, loss_tmp, train_mse_tmp, train_res_tmp, log_out=None):
     # 将运行结果打印出来
     print('train epoch: %d, time: %.3f' % (i_epoch, run_time))
-    print('learning rate: %f' % tmp_lr)
+    print('learning rate: %.10f' % tmp_lr)
     print('boundary penalty: %f' % temp_penalty_bd)
     print('weights and biases with  penalty: %f' % pwb)
     print('loss_it for training: %.10f' % loss_it_tmp)
@@ -56,7 +56,7 @@ def print_and_log_train_one_epoch(i_epoch, run_time, tmp_lr, temp_penalty_bd, pw
     print('solution residual error for training: %.10f\n' % train_res_tmp)
 
     log_string('train epoch: %d,time: %.3f' % (i_epoch, run_time), log_out)
-    log_string('learning rate: %f' % tmp_lr, log_out)
+    log_string('learning rate: %.10f' % tmp_lr, log_out)
     log_string('boundary penalty: %f' % temp_penalty_bd, log_out)
     log_string('weights and biases with  penalty: %f' % pwb, log_out)
     log_string('loss_it for training: %.10f' % loss_it_tmp, log_out)

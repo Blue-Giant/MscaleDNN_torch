@@ -99,8 +99,8 @@ def rand_bd_2D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_f
     return x_left_bd, x_right_bd, y_bottom_bd, y_top_bd
 
 
-def rand_bd_3D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-               use_grad=False):
+def rand_bd_3D(batch_size, variable_dim,  region_a=0.0, region_b=1.0, to_torch=True, to_float=True, to_cuda=False,
+               gpu_no=0, use_grad=False):
     # np.asarray 将输入转为矩阵格式。
     # 当输入是列表的时候，更改列表的值并不会影响转化为矩阵的值
     # [0,1] 转换为 矩阵，然后

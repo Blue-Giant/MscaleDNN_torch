@@ -14,7 +14,7 @@ import platform
 import shutil
 import dataUtilizer2torch
 import time
-import DNN_base
+import DNN_base_New
 import DNN_tools
 import DNN_Log_Print
 import General_Laplace
@@ -47,17 +47,17 @@ class MscaleDNN(tn.Module):
         """
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
-            self.DNN = DNN_base.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
+            self.DNN = DNN_base_New.Pure_DenseNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                               name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
                                               actName2out=name2actOut, type2float=type2numeric, to_gpu=use_gpu,
                                               gpu_no=No2GPU)
         elif 'SCALE_DNN' == str.upper(Model_name) or 'DNN_SCALE' == str.upper(Model_name):
-            self.DNN = DNN_base.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
+            self.DNN = DNN_base_New.Dense_ScaleNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
                                                actName2out=name2actOut, type2float=type2numeric,
                                                repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
         elif 'FOURIER_DNN' == str.upper(Model_name) or 'DNN_FOURIERBASE' == str.upper(Model_name):
-            self.DNN = DNN_base.Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
+            self.DNN = DNN_base_New.Dense_FourierNet(indim=input_dim, outdim=out_dim, hidden_units=hidden_layer,
                                                  name2Model=Model_name, actName2in=name2actIn, actName=name2actHidden,
                                                  actName2out=name2actOut, type2float=type2numeric,
                                                  repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
@@ -70,6 +70,26 @@ class MscaleDNN(tn.Module):
         self.name2actOut = name2actOut
         self.sFourier = sFourier
         self.opt2regular_WB = opt2regular_WB
+
+        if 'SCALE_DNN' == str.upper(Model_name) or 'DNN_SCALE' == str.upper(Model_name) or \
+                'FOURIER_DNN' == str.upper(Model_name) or 'DNN_FOURIERBASE' == str.upper(Model_name):
+            Unit_num = int(hidden_layer[0] / len(factor2freq))
+            mixcoe = np.repeat(factor2freq, Unit_num)
+
+            if repeat_highFreq == True:
+                mixcoe = np.concatenate(
+                    (mixcoe, np.ones([hidden_layer[0] - Unit_num * len(factor2freq)]) * factor2freq[-1]))
+            else:
+                mixcoe = np.concatenate(
+                    (np.ones([hidden_layer[0] - Unit_num * len(factor2freq)]) * factor2freq[0], mixcoe))
+
+            mixcoe = mixcoe.astype(np.float32)
+            torch_mixcoe = torch.from_numpy(mixcoe)
+            if use_gpu:
+                torch_mixcoe = torch_mixcoe.cuda(device='cuda:' + str(No2GPU))
+            self.factor2freq = torch_mixcoe
+        else:
+            self.factor2freq = factor2freq
 
         if type2numeric == 'float32':
             self.float_type = torch.float32

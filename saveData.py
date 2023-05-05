@@ -79,7 +79,7 @@ def save_train_MSE_REL2mat(Mse_data, Rel_data, actName=None, outPath=None):
     #     outFile2data = '%s/train_Err2sReLU.mat' % (outPath)
     # if actName == 'ReLU':
     #     outFile2data = '%s/train_Err2ReLU.mat' % (outPath)
-    outFile2data = '%s/train_Err2%s.mat' % (outPath, actName)
+    outFile2data = '%s/Loss2%s.mat' % (outPath, actName)
     key2mat_1 = 'mse'
     key2mat_2 = 'rel'
     scio.savemat(outFile2data, {key2mat_1: Mse_data, key2mat_2: Rel_data})

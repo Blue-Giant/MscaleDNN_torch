@@ -284,22 +284,22 @@ def solve_Multiscale_PDE(R):
     DNN_Log_Print.dictionary_out2file(R, log_fileout)
 
     # 问题需要的设置
-    batchsize_it = R['batch_size2interior']       # 内部点批大小
-    batchsize_bd = R['batch_size2boundary']       # 边界点批大小
+    batchsize_it = R['batch_size2interior']
+    batchsize_bd = R['batch_size2boundary']
 
     bd_penalty_init = R['init_boundary_penalty']  # Regularization parameter for boundary conditions
     penalty2WB = R['penalty2weight_biases']       # Regularization parameter for weights and biases
     learning_rate = R['learning_rate']
 
-    input_dim = R['input_dim']                    # 输入维度
-    out_dim = R['output_dim']                     # 输出维度
+    input_dim = R['input_dim']
+    out_dim = R['output_dim']
 
     # pLaplace 算子需要的额外设置, 先预设一下
     p_index = 2
     epsilon = 0.1
     mesh_number = 2
-    region_lb = 0.0                               # 矩形边界的左边和下边
-    region_rt = 1.0                               # 矩形边界的右边和上边
+    region_lb = 0.0
+    region_rt = 1.0
 
     if R['PDE_type'] == 'general_Laplace' or R['PDE_type'] == 'Laplace':
         # -laplace u = f
@@ -370,7 +370,6 @@ def solve_Multiscale_PDE(R):
     test_mse_all, test_rel_all = [], []
     test_epoch = []
 
-    # 测试数据的模式：随机生成或由matlab文件导入
     if R['testData_model'] == 'random_generate':
         # 生成测试数据，用于测试训练后的网络
         test_bach_size = 1600
@@ -380,7 +379,7 @@ def solve_Multiscale_PDE(R):
         # test_bach_size = 10000
         # size2test = 100
         test_xy_bach = dataUtilizer2torch.rand_it(test_bach_size, R['input_dim'], region_lb, region_rt, to_torch=False,
-                                                  to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'])
+                                                  to_float=True, to_cuda=False, gpu_no=R['gpuNo'])
         saveData.save_testData_or_solus2mat(test_xy_bach, dataName='testXY', outPath=R['FolderName'])
     else:
         if R['PDE_type'] == 'pLaplace_implicit' or R['PDE_type'] == 'pLaplace_explicit':
@@ -442,8 +441,8 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_in2Laplace(XY=xy_it_batch, fside=f, if_lambda2fside=True,
-                                                           loss_type=R['loss_type'], scale2lncosh=R['scale2lncosh'])
+            UNN2train, loss_it = mscalednn.loss_in2Laplace(XY=xy_it_batch, fside=f, loss_type=R['loss_type'],
+                                                           scale2lncosh=R['scale2lncosh'])
         else:
             UNN2train, loss_it = mscalednn.loss_in2pLaplace(
                 XY=xy_it_batch, fside=f, if_lambda2fside=True, aside=A_eps, if_lambda2aside=True,
@@ -484,7 +483,6 @@ def solve_Multiscale_PDE(R):
         train_mse_all.append(train_mse.item())
         train_rel_all.append(train_rel.item())
 
-        # 每1000个epoch输出日志到txt文档，并测试网络一次
         if i_epoch % 1000 == 0:
             run_times = time.time() - t0
             tmp_lr = optimizer.param_groups[0]['lr']
@@ -671,6 +669,8 @@ if __name__ == "__main__":
             R['batch_size2boundary'] = 300  # 边界训练数据的批大小
         elif R['mesh_number'] == 6:
             R['batch_size2boundary'] = 500  # 边界训练数据的批大小
+        elif R['mesh_number'] == 7:
+            R['batch_size2boundary'] = 750  # 边界训练数据的批大小
     else:
         R['batch_size2interior'] = 3000  # 内部训练数据的批大小
         R['batch_size2boundary'] = 500  # 边界训练数据的批大小
@@ -696,8 +696,8 @@ if __name__ == "__main__":
 
     R['optimizer_name'] = 'Adam'  # 优化器
     # R['learning_rate'] = 0.01  # 学习率
-    # R['learning_rate'] = 0.005  # 学习率
-    R['learning_rate'] = 0.001  # 学习率
+    R['learning_rate'] = 0.005  # 学习率
+    # R['learning_rate'] = 0.001  # 学习率
     # R['learning_rate'] = 2e-4  # 学习率
     R['learning_rate_decay'] = 5e-5  # 学习率 decay
     R['train_model'] = 'union_training'
@@ -733,7 +733,8 @@ if __name__ == "__main__":
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
     if R['model2NN'] == 'Fourier_DNN':
-        R['hidden_layers'] = (125, 200, 100, 100, 80)  # 1*125+250*200+200*200+200*100+100*100+100*50+50*1=128205
+        # R['hidden_layers'] = (125, 200, 100, 100, 80)  # 1*125+250*200+200*200+200*100+100*100+100*50+50*1=128205
+        R['hidden_layers'] = (225, 250, 200, 200, 150)  # 2*225+450*250+250*200+200*200+200*150+150*1=233100
         # R['hidden_layers'] = (50, 80, 60, 60, 40)
     else:
         # R['hidden_layers'] = (100, 80, 80, 60, 40, 40)
@@ -766,15 +767,18 @@ if __name__ == "__main__":
     if R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'tanh':
         # R['sfourier'] = 0.5
         R['sfourier'] = 1.0
-    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 's2relu':
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'enhance_tanh':
         R['sfourier'] = 0.5
         # R['sfourier'] = 1.0
+    elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 's2relu':
+        # R['sfourier'] = 0.5
+        R['sfourier'] = 1.0
     elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sinAddcos':
-        # R['sfourier'] = 0.5
-        R['sfourier'] = 1.0
+        R['sfourier'] = 0.5
+        # R['sfourier'] = 1.0
     elif R['model2NN'] == 'Fourier_DNN' and R['name2act_hidden'] == 'sin':
-        # R['sfourier'] = 0.5
-        R['sfourier'] = 1.0
+        R['sfourier'] = 0.5
+        # R['sfourier'] = 1.0
     else:
         R['sfourier'] = 1.0
         # R['sfourier'] = 5.0

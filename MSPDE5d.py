@@ -29,6 +29,24 @@ class MscaleDNN(tn.Module):
     def __init__(self, input_dim=5, out_dim=1, hidden_layer=None, Model_name='DNN', name2actIn='relu',
                  name2actHidden='relu', name2actOut='linear', opt2regular_WB='L2', type2numeric='float32',
                  factor2freq=None, sFourier=1.0, repeat_highFreq=True, use_gpu=False, No2GPU=0):
+        """
+        initialing the class of MscaleDNN with given setups
+        Args:
+             input_dim:        the dimension of input data
+             out_dim:          the dimension of output data
+             hidden_layer:     the number of units for hidden layers(a tuple or a list)
+             Model_name:       the name of DNN model(DNN, ScaleDNN or FourierDNN)
+             name2actIn:       the name of activation function for input layer
+             name2actHidden:   the name of activation function for all hidden layers
+             name2actOut:      the name of activation function for all output layer
+             opt2regular_WB:   the option of regularing weights and biases
+             type2numeric:     the numerical type of float
+             factor2freq:      the scale vector for ScaleDNN or FourierDNN
+             sFourier:         the relaxation factor for FourierDNN
+             repeat_highFreq:  repeat the high-frequency scale-factor or not
+             use_gpu:          using cuda or not
+             No2GPU:           if your computer have more than one GPU, please assign the number of GPU
+        """
         super(MscaleDNN, self).__init__()
         if 'DNN' == str.upper(Model_name):
             self.DNN = DNN_base.Pure_DenseNet(
@@ -70,7 +88,21 @@ class MscaleDNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_it2Laplace(self, XYZST=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss'):
+    def loss_in2Laplace(self, XYZST=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', scale2lncosh=0.1):
+        """
+        Calculating the loss of Laplace equation (*) in the interior points for given domain
+        -Laplace U = f,  in Omega
+        U = g            on Partial Omega
+        Args:
+             XYZST:           the input data of variable. ------  float, shape=[B,D]
+             fside:           the force side              ------  float, shape=[B,1]
+             if_lambda2fside: the force-side is a lambda function or an array  ------ Bool
+             loss_type:       the type of loss function(Ritz, L2, Lncosh)      ------ string
+             scale2lncosh:    if the loss is lncosh, using it                  ------- float
+        return:
+             UNN:             the output data
+             loss_in:         the output loss in the interior points for given domain
+        """
         assert (XYZST is not None)
         assert (fside is not None)
 
@@ -96,7 +128,7 @@ class MscaleDNN(tn.Module):
         if str.lower(loss_type) == 'ritz_loss' or str.lower(loss_type) == 'variational_loss':
             dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
             loss_it_ritz = (1.0/2)*dUNN_2Norm-torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
-            loss_it = torch.mean(loss_it_ritz)
+            loss_in = torch.mean(loss_it_ritz)
         elif str.lower(loss_type) == 'l2_loss':
             dUNN2x = torch.reshape(dUNN[:, 0], shape=[-1, 1])
             dUNN2y = torch.reshape(dUNN[:, 1], shape=[-1, 1])
@@ -123,10 +155,23 @@ class MscaleDNN(tn.Module):
             # -Laplace U = f --> -Laplace U - f --> -(Laplace U + f)
             loss_it_L2 = dUNNxx + dUNNyy + dUNNzz + dUNNss + dUNNtt + torch.reshape(force_side, shape=[-1, 1])
             square_loss_it = torch.mul(loss_it_L2, loss_it_L2)
-            loss_it = torch.mean(square_loss_it)
-        return UNN, loss_it
+            loss_in = torch.mean(square_loss_it)
+        return UNN, loss_in
 
-    def loss2bd(self, XYZST_bd=None, Ubd_exact=None, if_lambda2Ubd=True):
+    def loss2bd(self, XYZST_bd=None, Ubd_exact=None, if_lambda2Ubd=True, loss_type='ritz_loss', scale2lncosh=0.1):
+        """
+        Calculating the loss of Laplace equation (*) on the boundary points for given boundary
+        -Laplace U = f,  in Omega
+        U = g            on Partial Omega
+        Args:
+            XYZST_bd:      the input data of variable. ------  float, shape=[B,D]
+            Ubd_exact:     the exact function or array for boundary condition
+            if_lambda2Ubd: the Ubd_exact is a lambda function or an array  ------ Bool
+            loss_type:     the type of loss function(Ritz, L2, Lncosh)      ------ string
+            scale2lncosh:  if the loss is lncosh, using it                  ------- float
+        return:
+            loss_bd: the output loss on the boundary points for given boundary
+        """
         assert (XYZST_bd is not None)
         assert (Ubd_exact is not None)
 
@@ -151,10 +196,20 @@ class MscaleDNN(tn.Module):
         return loss_bd
 
     def get_regularSum2WB(self):
+        """
+        Calculating the regularization sum of weights and biases
+        """
         sum2WB = self.DNN.get_regular_sum2WB(regular_model=self.opt2regular_WB)
         return sum2WB
 
     def evalue_MscaleDNN(self, XYZST_points=None):
+        """
+        Evaluating the MscaleDNN for testing points
+        Args:
+            XYZST_points: the testing input data of variable. ------  float, shape=[B,D]
+        return:
+            UNN: the testing output
+        """
         assert (XYZST_points is not None)
         shape2XYZST = XYZST_points.shape
         lenght2XYZST_shape = len(shape2XYZST)
@@ -277,14 +332,14 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_it2Laplace(XY=xyz_it_batch, fside=f, loss_type=R['loss_type'])
+            UNN2train, loss_it = mscalednn.loss_in2Laplace(XYZST=xyz_it_batch, fside=f, loss_type=R['loss_type'])
 
-        loss_bd2left = mscalednn.loss2bd(XYZ_bd=xyz_left_batch, Ubd_exact=u_left)
-        loss_bd2right = mscalednn.loss2bd(XYZ_bd=xyz_right_batch, Ubd_exact=u_right)
-        loss_bd2bottom = mscalednn.loss2bd(XYZ_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
-        loss_bd2top = mscalednn.loss2bd(XYZ_bd=xyz_top_batch, Ubd_exact=u_top)
-        loss_bd2front = mscalednn.loss2bd(XYZ_bd=xyz_front_batch, Ubd_exact=u_front)
-        loss_bd2behind = mscalednn.loss2bd(XYZ_bd=xyz_behind_batch, Ubd_exact=u_behind)
+        loss_bd2left = mscalednn.loss2bd(XYZST_bd=xyz_left_batch, Ubd_exact=u_left)
+        loss_bd2right = mscalednn.loss2bd(XYZST_bd=xyz_right_batch, Ubd_exact=u_right)
+        loss_bd2bottom = mscalednn.loss2bd(XYZST_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
+        loss_bd2top = mscalednn.loss2bd(XYZST_bd=xyz_top_batch, Ubd_exact=u_top)
+        loss_bd2front = mscalednn.loss2bd(XYZST_bd=xyz_front_batch, Ubd_exact=u_front)
+        loss_bd2behind = mscalednn.loss2bd(XYZST_bd=xyz_behind_batch, Ubd_exact=u_behind)
         loss_bd = loss_bd2left + loss_bd2right + loss_bd2bottom + loss_bd2top + loss_bd2front + loss_bd2behind
 
         PWB = penalty2WB * mscalednn.get_regularSum2WB()
