@@ -1,9 +1,15 @@
 import numpy as np
 import torch
+import scipy.stats.qmc as stqmc
+import matplotlib.pyplot as plt
+from matplotlib.patches import ConnectionPatch
+import matplotlib.cm as cm
+from mpl_toolkits.mplot3d import Axes3D
+import pydoc
 
 
 # ---------------------------------------------- 数据集的生成 ---------------------------------------------------
-#  方形区域[a,b]^n生成随机数, n代表变量个数
+#  内部生成，方形区域[a,b]^n生成随机数, n代表变量个数，使用随机采样方法
 def rand_it(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
             use_grad2x=False):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
@@ -23,6 +29,46 @@ def rand_it(batch_size, variable_dim, region_a, region_b, to_torch=True, to_floa
     return x_it
 
 
+#  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用拉丁超立方采样方法
+def rand_it_lhs(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+                use_grad2x=False):
+    # sampler = stqmc.LatinHypercube(d=variable_dim, seed=1)
+    sampler = stqmc.LatinHypercube(d=variable_dim)
+    x_it = (region_b - region_a) * sampler.random(batch_size) + region_a
+    if to_float:
+        x_it = x_it.astype(np.float32)
+
+    if to_torch:
+        x_it = torch.from_numpy(x_it)
+
+        if to_cuda:
+            x_it = x_it.cuda(device='cuda:' + str(gpu_no))
+
+        x_it.requires_grad = use_grad2x
+
+    return x_it
+
+
+#  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用Sobol采样方法
+def rand_it_Sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+                   use_grad2x=False):
+    sampler = stqmc.Sobol(d=variable_dim, scramble=True)
+    x_it = (region_b - region_a) * sampler.random(n=batch_size) + region_a
+    if to_float:
+        x_it = x_it.astype(np.float32)
+
+    if to_torch:
+        x_it = torch.from_numpy(x_it)
+
+        if to_cuda:
+            x_it = x_it.cuda(device='cuda:' + str(gpu_no))
+
+        x_it.requires_grad = use_grad2x
+
+    return x_it
+
+
+# 边界生成点
 def rand_bd_1D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
                use_grad2x=False):
     # np.asarray 将输入转为矩阵格式。
@@ -99,8 +145,88 @@ def rand_bd_2D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_f
     return x_left_bd, x_right_bd, y_bottom_bd, y_top_bd
 
 
-def rand_bd_3D(batch_size, variable_dim,  region_a=0.0, region_b=1.0, to_torch=True, to_float=True, to_cuda=False,
-               gpu_no=0, use_grad=False):
+def rand_bd_2D_lhs(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+                   use_grad=False):
+    region_a = float(region_a)
+    region_b = float(region_b)
+    assert (int(variable_dim) == 2)
+    sampler = stqmc.LatinHypercube(d=variable_dim)
+    x_left_bd = (region_b-region_a) * sampler.random(batch_size) + region_a   # 浮点数都是从0-1中随机。
+    x_right_bd = (region_b - region_a) * sampler.random(batch_size) + region_a
+    y_bottom_bd = (region_b - region_a) * sampler.random(batch_size) + region_a
+    y_top_bd = (region_b - region_a) * sampler.random(batch_size) + region_a
+    for ii in range(batch_size):
+        x_left_bd[ii, 0] = region_a
+        x_right_bd[ii, 0] = region_b
+        y_bottom_bd[ii, 1] = region_a
+        y_top_bd[ii, 1] = region_b
+
+    if to_float:
+        x_left_bd = x_left_bd.astype(np.float32)
+        x_right_bd = x_right_bd.astype(np.float32)
+        y_bottom_bd = y_bottom_bd.astype(np.float32)
+        y_top_bd = y_top_bd.astype(np.float32)
+    if to_torch:
+        x_left_bd = torch.from_numpy(x_left_bd)
+        x_right_bd = torch.from_numpy(x_right_bd)
+        y_bottom_bd = torch.from_numpy(y_bottom_bd)
+        y_top_bd = torch.from_numpy(y_top_bd)
+        if to_cuda:
+            x_left_bd = x_left_bd.cuda(device='cuda:' + str(gpu_no))
+            x_right_bd = x_right_bd.cuda(device='cuda:' + str(gpu_no))
+            y_bottom_bd = y_bottom_bd.cuda(device='cuda:' + str(gpu_no))
+            y_top_bd = y_top_bd.cuda(device='cuda:' + str(gpu_no))
+
+        x_left_bd.requires_grad = use_grad
+        x_right_bd.requires_grad = use_grad
+        y_bottom_bd.requires_grad = use_grad
+        y_top_bd.requires_grad = use_grad
+
+    return x_left_bd, x_right_bd, y_bottom_bd, y_top_bd
+
+
+def rand_bd_2D_sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+                     use_grad=False):
+    region_a = float(region_a)
+    region_b = float(region_b)
+    assert (int(variable_dim) == 2)
+    sampler = stqmc.Sobol(d=variable_dim, scramble=True)
+    x_left_bd = (region_b-region_a) * sampler.random(n=batch_size) + region_a   # 浮点数都是从0-1中随机。
+    x_right_bd = (region_b - region_a) * sampler.random(n=batch_size) + region_a
+    y_bottom_bd = (region_b - region_a) * sampler.random(n=batch_size) + region_a
+    y_top_bd = (region_b - region_a) * sampler.random(n=batch_size) + region_a
+    for ii in range(batch_size):
+        x_left_bd[ii, 0] = region_a
+        x_right_bd[ii, 0] = region_b
+        y_bottom_bd[ii, 1] = region_a
+        y_top_bd[ii, 1] = region_b
+
+    if to_float:
+        x_left_bd = x_left_bd.astype(np.float32)
+        x_right_bd = x_right_bd.astype(np.float32)
+        y_bottom_bd = y_bottom_bd.astype(np.float32)
+        y_top_bd = y_top_bd.astype(np.float32)
+    if to_torch:
+        x_left_bd = torch.from_numpy(x_left_bd)
+        x_right_bd = torch.from_numpy(x_right_bd)
+        y_bottom_bd = torch.from_numpy(y_bottom_bd)
+        y_top_bd = torch.from_numpy(y_top_bd)
+        if to_cuda:
+            x_left_bd = x_left_bd.cuda(device='cuda:' + str(gpu_no))
+            x_right_bd = x_right_bd.cuda(device='cuda:' + str(gpu_no))
+            y_bottom_bd = y_bottom_bd.cuda(device='cuda:' + str(gpu_no))
+            y_top_bd = y_top_bd.cuda(device='cuda:' + str(gpu_no))
+
+        x_left_bd.requires_grad = use_grad
+        x_right_bd.requires_grad = use_grad
+        y_bottom_bd.requires_grad = use_grad
+        y_top_bd.requires_grad = use_grad
+
+    return x_left_bd, x_right_bd, y_bottom_bd, y_top_bd
+
+
+def rand_bd_3D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+               use_grad=False):
     # np.asarray 将输入转为矩阵格式。
     # 当输入是列表的时候，更改列表的值并不会影响转化为矩阵的值
     # [0,1] 转换为 矩阵，然后
@@ -316,3 +442,153 @@ def rand_bd_5D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_f
         x4b.requires_grad = use_grad
 
     return x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b, x4a, x4b
+
+
+def sampler_test():
+    size = 20
+    dim = 2
+    left = -2
+    right = 2
+    x = rand_it_lhs(batch_size=size, variable_dim=dim, region_a=left, region_b=right)
+    print('Endding!!!!!!')
+    z = np.sin(x[:, 0]) * np.sin(x[:, 1])
+
+    # 绘制解的3D散点图(真解和预测解)
+    fig = plt.figure(figsize=(10, 10))
+    ax = Axes3D(fig)
+    ax.scatter(x[:, 0], x[:, 1], z, cmap='b', label='z')
+
+    # 绘制图例
+    ax.legend(loc='best')
+    # 添加坐标轴(顺序是X，Y, Z)
+    ax.set_xlabel('X', fontdict={'size': 15, 'color': 'red'})
+    ax.set_ylabel('Y', fontdict={'size': 15, 'color': 'red'})
+    ax.set_zlabel('u', fontdict={'size': 15, 'color': 'red'})
+    plt.show()
+
+    y = rand_it_lhs(batch_size=size, variable_dim=dim, region_a=left, region_b=right)
+    print('Endding!!!!!!')
+
+
+def sample_test2():
+    size = 2000
+    dim = 2
+    left = -2
+    right = 2
+    x = rand_it_lhs(batch_size=size, variable_dim=dim, region_a=left, region_b=right)
+    print('Endding!!!!!!')
+    z = np.sin(x[:, 0]) * np.sin(x[:, 1])
+
+    # plt.figure()
+    # plt.plot(x[:, 0], x[:, 1], 'b*')
+    # plt.xlabel('x', fontsize=14)
+    # plt.ylabel('y', fontsize=14)
+    # plt.legend(fontsize=18)
+    # plt.title('point2lhs')
+    # plt.show()
+
+    y = rand_it(batch_size=size, variable_dim=dim, region_a=left, region_b=right)
+    print('Endding!!!!!!')
+    plt.figure()
+    plt.plot(x[:, 0], x[:, 1], 'b*', label='lhs')
+    plt.plot(y[:, 0], y[:, 1], 'r.', label='rand')
+    plt.xlabel('x', fontsize=14)
+    plt.ylabel('y', fontsize=14)
+    plt.legend(fontsize=18, loc='lower left')
+    plt.show()
+
+
+def sample_test_1D():
+    size = 2000
+    dim = 1
+    left = -2
+    right = 2
+    x = rand_it_lhs(batch_size=size, variable_dim=dim, region_a=left, region_b=right)
+    y = rand_it_lhs(batch_size=size, variable_dim=dim, region_a=left, region_b=right)
+    xy = rand_it_lhs(batch_size=size, variable_dim=2, region_a=left, region_b=right)
+    print('Endding!!!!!!')
+
+    plt.figure()
+    # plt.plot(x, y, 'b*', label='lhs1D')
+    plt.plot(xy[:, 0], xy[:, 1], 'r.', label='lhs2D')
+    plt.xlabel('x', fontsize=14)
+    plt.ylabel('y', fontsize=14)
+    plt.legend(fontsize=18, loc='lower left')
+    plt.show()
+
+
+def sample_test_1D_sobol():
+    size = 200
+    dim = 1
+    left = -2
+    right = 2
+    xy = rand_it_Sobol(batch_size=size, variable_dim=2, region_a=left, region_b=right)
+
+    xy2 = rand_it_Sobol(batch_size=size, variable_dim=2, region_a=left, region_b=right)
+
+    xy3 = rand_it_Sobol(batch_size=size, variable_dim=2, region_a=left, region_b=right)
+
+    xy4 = rand_it_Sobol(batch_size=size, variable_dim=2, region_a=left, region_b=right)
+
+    xy5 = rand_it_Sobol(batch_size=size, variable_dim=2, region_a=left, region_b=right)
+    print('Endding!!!!!!')
+
+    plt.figure()
+
+    plt.plot(xy[:, 0], xy[:, 1], 'r.', label='lhs2D')
+    plt.plot(xy2[:, 0], xy2[:, 1], 'm.', label='lhs2D')
+    plt.plot(xy3[:, 0], xy3[:, 1], 'b*', label='lhs1D')
+    plt.plot(xy4[:, 0], xy4[:, 1], 'g*', label='lhs1D')
+
+    plt.plot(xy5[:, 0], xy4[:, 1], 'm*', label='lhs1D')
+    plt.xlabel('x', fontsize=14)
+    plt.ylabel('y', fontsize=14)
+    plt.legend(fontsize=18, loc='lower left')
+    plt.show()
+
+
+def lhs_sample_bd_test_2D():
+    size = 2000
+    dim = 2
+    left = -2
+    right = 2
+    xy_left, xy_right, xy_bottom, xy_top = rand_bd_2D_lhs(batch_size=size, variable_dim=dim,
+                                                          region_a=left, region_b=right)
+    print('Endding!!!!!!')
+
+    plt.figure()
+    plt.plot(xy_left[:, 0], xy_left[:, 1], 'b*', label='lhs')
+    plt.plot(xy_right[:, 0], xy_right[:, 1], 'r.', label='rand')
+    plt.xlabel('x', fontsize=14)
+    plt.ylabel('y', fontsize=14)
+    plt.legend(fontsize=18, loc='lower left')
+    plt.show()
+
+
+def sobol_sample_bd_test_2D():
+    size = 2000
+    dim = 2
+    left = -2
+    right = 2
+    xy_left, xy_right, xy_bottom, xy_top = rand_bd_2D_sobol(batch_size=size, variable_dim=dim,
+                                                            region_a=left, region_b=right)
+    print('Endding!!!!!!')
+
+    plt.figure()
+    plt.plot(xy_left[:, 0], xy_left[:, 1], 'b*', label='lhs')
+    plt.plot(xy_right[:, 0], xy_right[:, 1], 'r.', label='rand')
+    plt.xlabel('x', fontsize=14)
+    plt.ylabel('y', fontsize=14)
+    plt.legend(fontsize=18, loc='lower left')
+    plt.show()
+
+
+if __name__ == "__main__":
+    # sample_test2()
+    # sample_test_1D()
+    # sample_test_1D_sobol()
+    # sample_test_2D()
+    sobol_sample_bd_test_2D()
+
+    # aa = np.random.randn(2, 4)
+    # print(aa)
