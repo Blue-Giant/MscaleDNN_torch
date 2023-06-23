@@ -22,7 +22,7 @@ This work exploited the technique of shifting the input data in narrow-range int
 Algorithms based on deep neural networks (DNNs) have attracted increasing attention from the scientific computing community. DNN based algorithms are easy to implement, natural for nonlinear problems, and have shown great potential to overcome the curse of dimensionality. In this work, we utilize the multi-scale DNN-based algorithm (MscaleDNN) proposed by Liu, Cai and Xu (2020) to solve multi-scale elliptic problems with possible nonlinearity, for example, the p-Laplacian problem. We improve the MscaleDNN algorithm by a smooth and localized activation function. Several numerical examples of multi-scale elliptic problems with separable or non-separable scales in low-dimensional and high-dimensional Euclidean spaces are used to demonstrate the effectiveness and accuracy of the MscaleDNN numerical scheme.
 
 # Noting:
-The original codes are found in https://github.com/Blue-Giant/MscaleDNN_tf1
+The original codes are found in https://github.com/Blue-Giant/MscaleDNN_tf1, and the coorresponding dada are provided in this url.
 
 The matlab codes in 2D辅助matlab代码/p=2 are useful for E1,E2,E3 and E4.
 
