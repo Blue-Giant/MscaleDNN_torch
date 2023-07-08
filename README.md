@@ -1,5 +1,7 @@
 # MscaleDNN_torch
 
+Solving a class of elliptic multi-scale PDEs by shifting the input data in narrow-range into large-range, then fed the transformed data into the DNN pipline
+
 # Requirement
 
 python = 3.9
