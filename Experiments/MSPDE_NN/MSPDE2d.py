@@ -592,17 +592,17 @@ def solve_Multiscale_PDE(R):
             DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
 
     # ------------------- save the training results into mat file and plot them -------------------------
-    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['name2act_in'],
+    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['name2act_hidden'],
                                          outPath=R['FolderName'])
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_in'], outPath=R['FolderName'])
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_hidden'], outPath=R['FolderName'])
 
     plotData.plotTrain_loss_1act_func(loss_it_all, lossType='loss_it', seedNo=R['seed'], outPath=R['FolderName'])
     plotData.plotTrain_loss_1act_func(loss_bd_all, lossType='loss_bd', seedNo=R['seed'], outPath=R['FolderName'],
                                       yaxis_scale=True)
     plotData.plotTrain_loss_1act_func(loss_all, lossType='loss', seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_in'], outPath=R['FolderName'])
-    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['name2act_in'], seedNo=R['seed'],
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_hidden'], outPath=R['FolderName'])
+    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['name2act_hidden'], seedNo=R['seed'],
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
@@ -616,21 +616,21 @@ def solve_Multiscale_PDE(R):
         point_square_error_numpy = point_square_error.detach().numpy()
 
     saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue',
-                                 actName1=R['name2act_in'], outPath=R['FolderName'])
+                                 actName1=R['name2act_hidden'], outPath=R['FolderName'])
 
     plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue',
                                     seedNo=R['seed'], outPath=R['FolderName'])
-    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['name2act_in'],
+    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['name2act_hidden'],
                                     seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['name2act_in'], outPath=R['FolderName'])
-    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['name2act_in'],
+    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['name2act_hidden'], outPath=R['FolderName'])
+    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['name2act_hidden'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['name2act_in'], outPath=R['FolderName'])
+    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['name2act_hidden'], outPath=R['FolderName'])
 
     plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test,
-                                     actName=R['name2act_in'], seedNo=R['seed'], outPath=R['FolderName'])
+                                     actName=R['name2act_hidden'], seedNo=R['seed'], outPath=R['FolderName'])
 
 
 if __name__ == "__main__":
