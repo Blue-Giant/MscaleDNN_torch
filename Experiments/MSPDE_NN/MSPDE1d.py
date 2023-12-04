@@ -337,9 +337,10 @@ def solve_Multiscale_PDE(R):
         test_x_bach = test_x_bach.cuda(device='cuda:' + str(R['gpuNo']))
 
     for i_epoch in range(R['max_epoch'] + 1):
-        x_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_l, region_b=region_r,
-                                                to_torch=True, to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
-                                                use_grad2x=True)
+        x_it_batch = dataUtilizer2torch.rand_in_1D(
+            batch_size=batchsize_it, variable_dim=R['input_dim'], region_a=region_l, region_b=region_r, to_torch=True,
+            to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'], use_grad2x=True)
+
         xl_bd_batch, xr_bd_batch = dataUtilizer2torch.rand_bd_1D(batchsize_bd, R['input_dim'], region_a=region_l,
                                                                  region_b=region_r, to_torch=True, to_float=True,
                                                                  to_cuda=R['use_gpu'], gpu_no=R['gpuNo'])

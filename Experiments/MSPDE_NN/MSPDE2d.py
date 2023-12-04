@@ -491,18 +491,15 @@ def solve_Multiscale_PDE(R):
     # Training our network
     t0 = time.time()
     for i_epoch in range(R['max_epoch'] + 1):
-        # Generate andomly the training set(random or LatinHypercube)
-        # xy_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_lb, region_b=region_rt,
-        #                                          to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
-        #                                          use_grad2x=True)
-        # xl_bd_batch, xr_bd_batch, yb_bd_batch, yt_bd_batch = dataUtilizer2torch.rand_bd_2D(
-        #     batchsize_bd, R['input_dim'], region_a=region_lb, region_b=region_rt, to_float=True, to_cuda=R['use_gpu'],
-        #     gpu_no=R['gpuNo'])
-        xy_it_batch = dataUtilizer2torch.rand_it_lhs(batchsize_it, R['input_dim'], region_a=region_lb,
-                                                     region_b=region_rt, to_float=True, to_cuda=R['use_gpu'],
-                                                     gpu_no=R['gpuNo'], use_grad2x=True)
-        xl_bd_batch, xr_bd_batch, yb_bd_batch, yt_bd_batch = dataUtilizer2torch.rand_bd_2D_lhs(
-            batchsize_bd, R['input_dim'], region_a=region_lb, region_b=region_rt, to_float=True, to_cuda=R['use_gpu'],
+        # Generate randomly the training set(random or LatinHypercube) default=lhs
+        xy_it_batch = dataUtilizer2torch.rand_in_2D(
+            batch_size=batchsize_it, variable_dim=R['input_dim'],  region_left=region_lb, region_right=region_rt,
+            region_bottom=region_lb, region_top=region_rt, to_float=True, to_torch=True, to_cuda=R['use_gpu'],
+            gpu_no=R['gpuNo'],
+            use_grad2x=True)
+        xl_bd_batch, xr_bd_batch, yb_bd_batch, yt_bd_batch = dataUtilizer2torch.rand_bd_2D(
+            batch_size=batchsize_bd, variable_dim=R['input_dim'], region_left=region_lb, region_right=region_rt,
+            region_bottom=region_lb, region_top=region_rt, to_float=True, to_torch=True, to_cuda=R['use_gpu'],
             gpu_no=R['gpuNo'])
         if R['activate_penalty2bd_increase'] == 1:
             if i_epoch < int(R['max_epoch'] / 10):
