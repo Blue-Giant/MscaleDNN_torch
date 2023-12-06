@@ -328,12 +328,19 @@ def solve_Multiscale_PDE(R):
         test_xyz_torch = test_xyz_torch.cuda(device='cuda:' + str(R['gpuNo']))
 
     for i_epoch in range(R['max_epoch'] + 1):
-        xyz_it_batch = dataUtilizer2torch.rand_it(batchsize_it, R['input_dim'], region_a=region_lb, region_b=region_rt,
-                                                  to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'],
-                                                  use_grad2x=True)
-        xyz_bottom_batch, xyz_top_batch, xyz_left_batch, xyz_right_batch, xyz_front_batch, xyz_behind_batch = \
-            dataUtilizer2torch.rand_bd_2D(batchsize_bd, R['input_dim'], region_a=region_lb, region_b=region_rt,
-                                          to_float=True, to_cuda=R['use_gpu'], gpu_no=R['gpuNo'])
+        # Generate randomly the training set(random or LatinHypercube) default=lhs
+        xyzs_it_batch = dataUtilizer2torch.rand_in_4D(
+            batch_size=batchsize_it, variable_dim=R['input_dim'], region_xleft=region_lb, region_xright=region_rt,
+            region_yleft=region_lb, region_yright=region_rt, region_zleft=region_lb, region_zright=region_rt,
+            region_sleft=region_lb, region_sright=region_rt, to_torch=True, to_float=True, to_cuda=R['use_gpu'],
+            gpu_no=R['gpuNo'], use_grad2x=True)
+
+        x00_bd, x01_bd, y00_bd, y01_bd, z00_bd, z01_bd, s00_bd, s01_bd = \
+            dataUtilizer2torch. rand_bd_4D(
+                batch_size=1000, variable_dim=3, region_xleft=region_lb, region_xright=region_rt,
+                region_yleft=region_lb, region_yright=region_rt, region_zleft=region_lb, region_zright=region_rt,
+                region_sleft=region_lb, region_sright=region_rt, to_torch=True, to_float=True, to_cuda=R['use_gpu'],
+                gpu_no=R['gpuNo'], use_grad=False, opt2sampler='lhs')
 
         if R['activate_penalty2bd_increase'] == 1:
             if i_epoch < int(R['max_epoch'] / 10):
@@ -352,7 +359,7 @@ def solve_Multiscale_PDE(R):
             temp_penalty_bd = bd_penalty_init
 
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
-            UNN2train, loss_it = mscalednn.loss_in2Laplace(XYZS=xyz_it_batch, fside=f, loss_type=R['loss_type'])
+            UNN2train, loss_it = mscalednn.loss_in2Laplace(XYZS=xyzs_it_batch, fside=f, loss_type=R['loss_type'])
 
         loss_bd2left = mscalednn.loss2bd(XYZS_bd=xyz_left_batch, Ubd_exact=u_left)
         loss_bd2right = mscalednn.loss2bd(XYZS_bd=xyz_right_batch, Ubd_exact=u_right)
