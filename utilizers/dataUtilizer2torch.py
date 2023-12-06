@@ -61,7 +61,7 @@ def rand_in_2D(batch_size=100, variable_dim=2, region_left=0.0, region_right=1.0
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 2 == int(variable_dim)
     if 'lhs' == opt2sampler:
-        sampler = stqmc.LatinHypercube(d=variable_dim)
+        sampler = stqmc.LatinHypercube(d=1)
         x_it = (region_right - region_left) * sampler.random(batch_size) + region_left
         y_it = (region_top - region_bottom) * sampler.random(batch_size) + region_bottom
     else:
@@ -91,7 +91,7 @@ def rand_in_3D(batch_size=100, variable_dim=3, region_left=0.0, region_right=1.0
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 3 == int(variable_dim)
     if 'lhs' == opt2sampler:
-        sampler = stqmc.LatinHypercube(d=variable_dim)
+        sampler = stqmc.LatinHypercube(d=1)
         x_it = (region_right - region_left) * sampler.random(batch_size) + region_left
         y_it = (region_front - region_behind) * sampler.random(batch_size) + region_behind
         z_it = (region_top - region_bottom) * sampler.random(batch_size) + region_bottom
@@ -123,7 +123,7 @@ def rand_in_4D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 4 == int(variable_dim)
     if 'lhs' == opt2sampler:
-        sampler = stqmc.LatinHypercube(d=variable_dim)
+        sampler = stqmc.LatinHypercube(d=1)
         x_it = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
         y_it = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
         z_it = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
@@ -156,9 +156,9 @@ def rand_in_5D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
                opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
-    assert 4 == int(variable_dim)
+    assert 5 == int(variable_dim)
     if 'lhs' == opt2sampler:
-        sampler = stqmc.LatinHypercube(d=variable_dim)
+        sampler = stqmc.LatinHypercube(d=1)
         x_it = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
         y_it = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
         z_it = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
@@ -184,6 +184,50 @@ def rand_in_5D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
         xyzst_in.requires_grad = use_grad2x
 
     return xyzst_in
+
+
+#  内部生成,矩形区域, 使用随机采样方法
+def rand_in_8D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1.0, region_yleft=0.0, region_yright=1.0,
+               region_zleft=0.0, region_zright=1.0, region_sleft=0.0, region_sright=1.0, region_tleft=0.0,
+               region_tright=1.0, region_pleft=0.0, region_pright=1.0, region_qleft=0.0, region_qright=1.0,
+               region_rleft=0.0, region_rright=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+               use_grad2x=False, opt2sampler='lhs'):
+    # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
+    # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
+    assert 8 == int(variable_dim)
+    if 'lhs' == opt2sampler:
+        sampler = stqmc.LatinHypercube(d=1)
+        x_it = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        y_it = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        z_it = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        s_it = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        t_it = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        p_it = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        q_it = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        r_it = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+    else:
+        x_it = (region_xright - region_xleft) * np.random.rand(batch_size, 1) + region_xleft
+        y_it = (region_yright - region_yleft) * np.random.rand(batch_size, 1) + region_yleft
+        z_it = (region_zright - region_zleft) * np.random.rand(batch_size, 1) + region_zleft
+        s_it = (region_sright - region_sleft) * np.random.rand(batch_size, 1) + region_sleft
+        t_it = (region_tright - region_tleft) * np.random.rand(batch_size, 1) + region_tleft
+        p_it = (region_pright - region_pleft) * np.random.rand(batch_size, 1) + region_pleft
+        q_it = (region_qright - region_qleft) * np.random.rand(batch_size, 1) + region_qleft
+        r_it = (region_rright - region_rleft) * np.random.rand(batch_size, 1) + region_rleft
+
+    xyzstpqr_in = np.concatenate([x_it, y_it, z_it, s_it, t_it, p_it, q_it, r_it], axis=-1)
+    if to_float:
+        xyzstpqr_in = xyzstpqr_in.astype(np.float32)
+
+    if to_torch:
+        xyzstpqr_in = torch.from_numpy(xyzstpqr_in)
+
+        if to_cuda:
+            xyzstpqr_in = xyzstpqr_in.cuda(device='cuda:' + str(gpu_no))
+
+        xyzstpqr_in.requires_grad = use_grad2x
+
+    return xyzstpqr_in
 
 
 #  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用Sobol采样方法
@@ -581,93 +625,639 @@ def rand_bd_4D(batch_size=1000, variable_dim=3, region_xleft=0.0, region_xright=
     return x00_bd, x01_bd, y00_bd, y01_bd, z00_bd, z01_bd, s00_bd, s01_bd
 
 
-def rand_bd_5D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-               use_grad=False):
+def rand_bd_5D(batch_size=1000, variable_dim=5, region_xleft=0.0, region_xright=1.0, region_yleft=0.0, region_yright=1.0,
+               region_zleft=0.0, region_zright=1.0, region_sleft=0.0, region_sright=1.0, region_tleft=0.0,
+               region_tright=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad=False,
+               opt2sampler='lhs'):
     # np.asarray 将输入转为矩阵格式。
     # 当输入是列表的时候，更改列表的值并不会影响转化为矩阵的值
     # [0,1] 转换为 矩阵，然后
     # reshape(-1,1):数组新的shape属性应该要与原来的配套，如果等于-1的话，那么Numpy会根据剩下的维度计算出数组的另外一个shape属性值。
-    region_a = float(region_a)
-    region_b = float(region_b)
     assert variable_dim == 5
-    x0a = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x0b = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x1a = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x1b = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x2a = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x2b = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x3a = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x3b = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x4a = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    x4b = (region_b - region_a) * np.random.rand(batch_size, 5) + region_a
-    for ii in range(batch_size):
-        x0a[ii, 0] = region_a
-        x0b[ii, 0] = region_b
+    x00_bd = np.zeros(shape=[batch_size, variable_dim])
+    x01_bd = np.zeros(shape=[batch_size, variable_dim])
 
-        x1a[ii, 1] = region_a
-        x1b[ii, 1] = region_b
+    y00_bd = np.zeros(shape=[batch_size, variable_dim])
+    y01_bd = np.zeros(shape=[batch_size, variable_dim])
 
-        x2a[ii, 2] = region_a
-        x2b[ii, 2] = region_b
+    z00_bd = np.zeros(shape=[batch_size, variable_dim])
+    z01_bd = np.zeros(shape=[batch_size, variable_dim])
 
-        x3a[ii, 3] = region_a
-        x3b[ii, 3] = region_b
+    s00_bd = np.zeros(shape=[batch_size, variable_dim])
+    s01_bd = np.zeros(shape=[batch_size, variable_dim])
 
-        x4a[ii, 4] = region_a
-        x4b[ii, 4] = region_b
+    t00_bd = np.zeros(shape=[batch_size, variable_dim])
+    t01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    if 'lhs' == opt2sampler:
+        sampler = stqmc.LatinHypercube(d=1)
+        x00_bd[:, 0:1] = region_xleft
+        x00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        x00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        x00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        x00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        x01_bd[:, 0:1] = region_xright
+        x01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        x01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        x01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        x01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        y00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        y00_bd[:, 1:2] = region_yleft
+        y00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        y00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        y00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        y01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        y01_bd[:, 1:2] = region_yright
+        y01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        y01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        y01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        z00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        z00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        z00_bd[:, 2:3] = region_zleft
+        z00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        z00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        z01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        z01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        z01_bd[:, 2:3] = region_zright
+        z01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        z01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        s00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        s00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        s00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        s00_bd[:, 3:4] = region_sleft
+        s00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        s01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        s01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        s01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        s01_bd[:, 3:4] = region_sright
+        s01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+
+        t00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        t00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        t00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        t00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        t00_bd[:, 4:5] = region_tleft
+
+        t01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        t01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        t01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        t01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        t01_bd[:, 4:5] = region_tright
+    else:
+        x00_bd[:, 0:1] = region_xleft
+        x00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        x00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        x00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        x00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        x01_bd[:, 0:1] = region_xright
+        x01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        x01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        x01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        x01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        y00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        y00_bd[:, 1:2] = region_yleft
+        y00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        y00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        y00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        y01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        y01_bd[:, 1:2] = region_yright
+        y01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        y01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        y01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        z00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        z00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        z00_bd[:, 2:3] = region_zleft
+        z00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        z00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        z01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        z01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        z01_bd[:, 2:3] = region_zright
+        z01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        z01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        s00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        s00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        s00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        s00_bd[:, 3:4] = region_sleft
+        s00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        s01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        s01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        s01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        s01_bd[:, 3:4] = region_sright
+        s01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+
+        t00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        t00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        t00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        t00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        t00_bd[:, 4:5] = region_tleft
+
+        t01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        t01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        t01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        t01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        t01_bd[:, 4:5] = region_tright
 
     if to_float:
-        x0a = x0a.astype(np.float32)
-        x0b = x0b.astype(np.float32)
+        x00_bd = x00_bd.astype(np.float32)
+        x01_bd = x01_bd.astype(np.float32)
 
-        x1a = x1a.astype(np.float32)
-        x1b = x1b.astype(np.float32)
+        y00_bd = y00_bd.astype(np.float32)
+        y01_bd = y01_bd.astype(np.float32)
 
-        x2a = x2a.astype(np.float32)
-        x2b = x2b.astype(np.float32)
+        z00_bd = z00_bd.astype(np.float32)
+        z01_bd = z01_bd.astype(np.float32)
 
-        x3a = x3a.astype(np.float32)
-        x3b = x3b.astype(np.float32)
+        s00_bd = s00_bd.astype(np.float32)
+        s01_bd = s01_bd.astype(np.float32)
 
-        x4a = x4a.astype(np.float32)
-        x4b = x4b.astype(np.float32)
+        t00_bd = t00_bd.astype(np.float32)
+        t01_bd = t01_bd.astype(np.float32)
 
     if to_torch:
-        x0a = torch.from_numpy(x0a)
-        x0b = torch.from_numpy(x0b)
-        x1a = torch.from_numpy(x1a)
-        x1b = torch.from_numpy(x1b)
-        x2a = torch.from_numpy(x2a)
-        x2b = torch.from_numpy(x2b)
-        x3a = torch.from_numpy(x3a)
-        x3b = torch.from_numpy(x3b)
-        x4a = torch.from_numpy(x4a)
-        x4b = torch.from_numpy(x4b)
+        x00_bd = torch.from_numpy(x00_bd)
+        x01_bd = torch.from_numpy(x01_bd)
+
+        y00_bd = torch.from_numpy(y00_bd)
+        y01_bd = torch.from_numpy(y01_bd)
+
+        z00_bd = torch.from_numpy(z00_bd)
+        z01_bd = torch.from_numpy(z01_bd)
+
+        s00_bd = torch.from_numpy(s00_bd)
+        s01_bd = torch.from_numpy(s01_bd)
+
+        t00_bd = torch.from_numpy(t00_bd)
+        t01_bd = torch.from_numpy(t01_bd)
 
         if to_cuda:
-            x0a = x0a.cuda(device='cuda:' + str(gpu_no))
-            x0b = x0b.cuda(device='cuda:' + str(gpu_no))
-            x1a = x1a.cuda(device='cuda:' + str(gpu_no))
-            x1b = x1b.cuda(device='cuda:' + str(gpu_no))
-            x2a = x2a.cuda(device='cuda:' + str(gpu_no))
-            x2b = x2b.cuda(device='cuda:' + str(gpu_no))
-            x3a = x3a.cuda(device='cuda:' + str(gpu_no))
-            x3b = x3b.cuda(device='cuda:' + str(gpu_no))
-            x4a = x4a.cuda(device='cuda:' + str(gpu_no))
-            x4b = x4b.cuda(device='cuda:' + str(gpu_no))
+            x00_bd = x00_bd.cuda(device='cuda:' + str(gpu_no))
+            x01_bd = x01_bd.cuda(device='cuda:' + str(gpu_no))
 
-        x0a.requires_grad = use_grad
-        x0b.requires_grad = use_grad
-        x1a.requires_grad = use_grad
-        x1b.requires_grad = use_grad
-        x2a.requires_grad = use_grad
-        x2b.requires_grad = use_grad
-        x3a.requires_grad = use_grad
-        x3b.requires_grad = use_grad
-        x4a.requires_grad = use_grad
-        x4b.requires_grad = use_grad
+            y00_bd = y00_bd.cuda(device='cuda:' + str(gpu_no))
+            y01_bd = y01_bd.cuda(device='cuda:' + str(gpu_no))
 
-    return x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b, x4a, x4b
+            z00_bd = z00_bd.cuda(device='cuda:' + str(gpu_no))
+            z01_bd = z01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            s00_bd = s00_bd.cuda(device='cuda:' + str(gpu_no))
+            s01_bd = s01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            t00_bd = t00_bd.cuda(device='cuda:' + str(gpu_no))
+            t01_bd = t01_bd.cuda(device='cuda:' + str(gpu_no))
+
+        x00_bd.requires_grad = use_grad
+        x01_bd.requires_grad = use_grad
+        y00_bd.requires_grad = use_grad
+        y01_bd.requires_grad = use_grad
+        z00_bd.requires_grad = use_grad
+        z01_bd.requires_grad = use_grad
+        s00_bd.requires_grad = use_grad
+        s01_bd.requires_grad = use_grad
+        t00_bd.requires_grad = use_grad
+        t01_bd.requires_grad = use_grad
+
+    return x00_bd, x01_bd, y00_bd, y01_bd, z00_bd, z01_bd, s00_bd, s01_bd, t00_bd, t01_bd
+
+
+def rand_bd_8D(batch_size=1000, variable_dim=8, region_xleft=0.0, region_xright=1.0, region_yleft=0.0, region_yright=1.0,
+               region_zleft=0.0, region_zright=1.0, region_sleft=0.0, region_sright=1.0, region_tleft=0.0,
+               region_tright=1.0, region_pleft=0.0, region_pright=1.0, region_qleft=0.0, region_qright=1.0,
+               region_rleft=0.0, region_rright=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+               use_grad=False, opt2sampler='lhs'):
+    # np.asarray 将输入转为矩阵格式。
+    # 当输入是列表的时候，更改列表的值并不会影响转化为矩阵的值
+    # [0,1] 转换为 矩阵，然后
+    # reshape(-1,1):数组新的shape属性应该要与原来的配套，如果等于-1的话，那么Numpy会根据剩下的维度计算出数组的另外一个shape属性值。
+    assert variable_dim == 8
+    x00_bd = np.zeros(shape=[batch_size, variable_dim])
+    x01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    y00_bd = np.zeros(shape=[batch_size, variable_dim])
+    y01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    z00_bd = np.zeros(shape=[batch_size, variable_dim])
+    z01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    s00_bd = np.zeros(shape=[batch_size, variable_dim])
+    s01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    t00_bd = np.zeros(shape=[batch_size, variable_dim])
+    t01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    p00_bd = np.zeros(shape=[batch_size, variable_dim])
+    p01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    q00_bd = np.zeros(shape=[batch_size, variable_dim])
+    q01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    r00_bd = np.zeros(shape=[batch_size, variable_dim])
+    r01_bd = np.zeros(shape=[batch_size, variable_dim])
+
+    if 'lhs' == opt2sampler:
+        sampler = stqmc.LatinHypercube(d=1)
+        x00_bd[:, 0:1] = region_xleft
+        x00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        x00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        x00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        x00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        x00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        x00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        x00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        x01_bd[:, 0:1] = region_xright
+        x01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        x01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        x01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        x01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        x01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        x01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        x01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        y00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        y00_bd[:, 1:2] = region_yleft
+        y00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        y00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        y00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        y00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        y00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        y00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        y01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        y01_bd[:, 1:2] = region_yright
+        y01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        y01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        y01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        y01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        y01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        y01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        z00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        z00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        z00_bd[:, 2:3] = region_zleft
+        z00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        z00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        z00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        z00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        z00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        z01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        z01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        z01_bd[:, 2:3] = region_zright
+        z01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        z01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        z01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        z01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        z01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        s00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        s00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        s00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        s00_bd[:, 3:4] = region_sleft
+        s00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        s00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        s00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        s00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        s01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        s01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        s01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        s01_bd[:, 3:4] = region_sright
+        s01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        z01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        z01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        z01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        t00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        t00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        t00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        t00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        t00_bd[:, 4:5] = region_tleft
+        t00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        t00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        t00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        t01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        t01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        t01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        t01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        t01_bd[:, 4:5] = region_tright
+        t01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        t01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        t01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        p00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        p00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        p00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        p00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        p00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        p00_bd[:, 5:6] = region_pleft
+        p00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        p00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        p01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        p01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        p01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        p01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        p01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        p01_bd[:, 5:6] = region_pright
+        p01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        p01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        q00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        q00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        q00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        q00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        q00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        q00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        q00_bd[:, 6:7] = region_qleft
+        q00_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        q01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        q01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        q01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        q01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        q01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        q01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        q01_bd[:, 6:7] = region_qright
+        q01_bd[:, 7:8] = (region_rright - region_rleft) * sampler.random(batch_size) + region_rleft
+
+        r00_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        r00_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        r00_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        r00_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        r00_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        r00_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        r00_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        r00_bd[:, 7:8] = region_rleft
+
+        r01_bd[:, 0:1] = (region_xright - region_xleft) * sampler.random(batch_size) + region_xleft
+        r01_bd[:, 1:2] = (region_yright - region_yleft) * sampler.random(batch_size) + region_yleft
+        r01_bd[:, 2:3] = (region_zright - region_zleft) * sampler.random(batch_size) + region_zleft
+        r01_bd[:, 3:4] = (region_sright - region_sleft) * sampler.random(batch_size) + region_sleft
+        r01_bd[:, 4:5] = (region_tright - region_tleft) * sampler.random(batch_size) + region_tleft
+        r01_bd[:, 5:6] = (region_pright - region_pleft) * sampler.random(batch_size) + region_pleft
+        r01_bd[:, 6:7] = (region_qright - region_qleft) * sampler.random(batch_size) + region_qleft
+        r01_bd[:, 7:8] = region_rright
+    else:
+        x00_bd[:, 0:1] = region_xleft
+        x00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        x00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        x00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        x00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        x00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        x00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        x00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        x01_bd[:, 0:1] = region_xright
+        x01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        x01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        x01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        x01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        x01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        x01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        x01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        y00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        y00_bd[:, 1:2] = region_yleft
+        y00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        y00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        y00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        y00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        y00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        y00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        y01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        y01_bd[:, 1:2] = region_yright
+        y01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        y01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        y01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        y01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        y01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        y01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        z00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        z00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        z00_bd[:, 2:3] = region_zleft
+        z00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        z00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        z00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        z00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        z00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        z01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        z01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        z01_bd[:, 2:3] = region_zright
+        z01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        z01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        z01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        z01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        z01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        s00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        s00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        s00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        s00_bd[:, 3:4] = region_sleft
+        s00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        s00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        s00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        s00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        s01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        s01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        s01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        s01_bd[:, 3:4] = region_sright
+        s01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        z01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        z01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        z01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        t00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        t00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        t00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        t00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        t00_bd[:, 4:5] = region_tleft
+        t00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        t00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        t00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        t01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        t01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        t01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        t01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        t01_bd[:, 4:5] = region_tright
+        t01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        t01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        t01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        p00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        p00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        p00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        p00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        p00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        p00_bd[:, 5:6] = region_pleft
+        p00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        p00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        p01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        p01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        p01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        p01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        p01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        p01_bd[:, 5:6] = region_pright
+        p01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        p01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        q00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        q00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        q00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        q00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        q00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        q00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        q00_bd[:, 6:7] = region_qleft
+        q00_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        q01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        q01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        q01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        q01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        q01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        q01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        q01_bd[:, 6:7] = region_qright
+        q01_bd[:, 7:8] = (region_rright - region_rleft) * np.random.random([batch_size, 1]) + region_rleft
+
+        r00_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        r00_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        r00_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        r00_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        r00_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        r00_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        r00_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        r00_bd[:, 7:8] = region_rleft
+
+        r01_bd[:, 0:1] = (region_xright - region_xleft) * np.random.random([batch_size, 1]) + region_xleft
+        r01_bd[:, 1:2] = (region_yright - region_yleft) * np.random.random([batch_size, 1]) + region_yleft
+        r01_bd[:, 2:3] = (region_zright - region_zleft) * np.random.random([batch_size, 1]) + region_zleft
+        r01_bd[:, 3:4] = (region_sright - region_sleft) * np.random.random([batch_size, 1]) + region_sleft
+        r01_bd[:, 4:5] = (region_tright - region_tleft) * np.random.random([batch_size, 1]) + region_tleft
+        r01_bd[:, 5:6] = (region_pright - region_pleft) * np.random.random([batch_size, 1]) + region_pleft
+        r01_bd[:, 6:7] = (region_qright - region_qleft) * np.random.random([batch_size, 1]) + region_qleft
+        r01_bd[:, 7:8] = region_rright
+
+    if to_float:
+        x00_bd = x00_bd.astype(np.float32)
+        x01_bd = x01_bd.astype(np.float32)
+
+        y00_bd = y00_bd.astype(np.float32)
+        y01_bd = y01_bd.astype(np.float32)
+
+        z00_bd = z00_bd.astype(np.float32)
+        z01_bd = z01_bd.astype(np.float32)
+
+        s00_bd = s00_bd.astype(np.float32)
+        s01_bd = s01_bd.astype(np.float32)
+
+        t00_bd = t00_bd.astype(np.float32)
+        t01_bd = t01_bd.astype(np.float32)
+
+        p00_bd = t00_bd.astype(np.float32)
+        p01_bd = t01_bd.astype(np.float32)
+
+        q00_bd = t00_bd.astype(np.float32)
+        q01_bd = t01_bd.astype(np.float32)
+
+        r00_bd = t00_bd.astype(np.float32)
+        r01_bd = t01_bd.astype(np.float32)
+
+    if to_torch:
+        x00_bd = torch.from_numpy(x00_bd)
+        x01_bd = torch.from_numpy(x01_bd)
+
+        y00_bd = torch.from_numpy(y00_bd)
+        y01_bd = torch.from_numpy(y01_bd)
+
+        z00_bd = torch.from_numpy(z00_bd)
+        z01_bd = torch.from_numpy(z01_bd)
+
+        s00_bd = torch.from_numpy(s00_bd)
+        s01_bd = torch.from_numpy(s01_bd)
+
+        t00_bd = torch.from_numpy(t00_bd)
+        t01_bd = torch.from_numpy(t01_bd)
+
+        p00_bd = torch.from_numpy(p00_bd)
+        p01_bd = torch.from_numpy(p01_bd)
+
+        q00_bd = torch.from_numpy(q00_bd)
+        q01_bd = torch.from_numpy(q01_bd)
+
+        r00_bd = torch.from_numpy(r00_bd)
+        r01_bd = torch.from_numpy(r01_bd)
+
+        if to_cuda:
+            x00_bd = x00_bd.cuda(device='cuda:' + str(gpu_no))
+            x01_bd = x01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            y00_bd = y00_bd.cuda(device='cuda:' + str(gpu_no))
+            y01_bd = y01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            z00_bd = z00_bd.cuda(device='cuda:' + str(gpu_no))
+            z01_bd = z01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            s00_bd = s00_bd.cuda(device='cuda:' + str(gpu_no))
+            s01_bd = s01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            t00_bd = t00_bd.cuda(device='cuda:' + str(gpu_no))
+            t01_bd = t01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            p00_bd = p00_bd.cuda(device='cuda:' + str(gpu_no))
+            p01_bd = p01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            q00_bd = q00_bd.cuda(device='cuda:' + str(gpu_no))
+            q01_bd = q01_bd.cuda(device='cuda:' + str(gpu_no))
+
+            r00_bd = r00_bd.cuda(device='cuda:' + str(gpu_no))
+            r01_bd = r01_bd.cuda(device='cuda:' + str(gpu_no))
+
+        x00_bd.requires_grad = use_grad
+        x01_bd.requires_grad = use_grad
+
+        y00_bd.requires_grad = use_grad
+        y01_bd.requires_grad = use_grad
+
+        z00_bd.requires_grad = use_grad
+        z01_bd.requires_grad = use_grad
+
+        s00_bd.requires_grad = use_grad
+        s01_bd.requires_grad = use_grad
+
+        t00_bd.requires_grad = use_grad
+        t01_bd.requires_grad = use_grad
+
+        p00_bd.requires_grad = use_grad
+        p01_bd.requires_grad = use_grad
+
+        q00_bd.requires_grad = use_grad
+        q01_bd.requires_grad = use_grad
+
+        r00_bd.requires_grad = use_grad
+        r01_bd.requires_grad = use_grad
+
+    return x00_bd, x01_bd, y00_bd, y01_bd, z00_bd, z01_bd, s00_bd, s01_bd, t00_bd, t01_bd, \
+           p00_bd, p01_bd, q00_bd, q01_bd, r00_bd, r01_bd
 
 
 def sampler_test():
@@ -786,6 +1376,17 @@ def lhs_sample_bd_test_3D():
     print('Endding!!!!!!')
 
 
+def lhs_sample_test_3D():
+    size = 2000
+    dim = 3
+    left = -2
+    right = 2
+    xyz = rand_in_3D(
+        batch_size=size, variable_dim=dim, region_left=left, region_right=right,
+            region_behind=left, region_front=right, region_bottom=left, region_top=right, to_torch=False)
+    print('Endding!!!!!!')
+
+
 def sobol_sample_bd_test_2D():
     size = 2000
     dim = 2
@@ -813,6 +1414,8 @@ if __name__ == "__main__":
     # lhs_sample_bd_test_2D()
 
     lhs_sample_bd_test_3D()
+
+    # lhs_sample_test_3D()
 
     # sobol_sample_bd_test_2D()
 
