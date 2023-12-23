@@ -495,8 +495,7 @@ def solve_Multiscale_PDE(R):
         xy_it_batch = dataUtilizer2torch.rand_in_2D(
             batch_size=batchsize_it, variable_dim=R['input_dim'],  region_left=region_lb, region_right=region_rt,
             region_bottom=region_lb, region_top=region_rt, to_float=True, to_torch=True, to_cuda=R['use_gpu'],
-            gpu_no=R['gpuNo'],
-            use_grad2x=True)
+            gpu_no=R['gpuNo'], use_grad=True)
         xl_bd_batch, xr_bd_batch, yb_bd_batch, yt_bd_batch = dataUtilizer2torch.rand_bd_2D(
             batch_size=batchsize_bd, variable_dim=R['input_dim'], region_left=region_lb, region_right=region_rt,
             region_bottom=region_lb, region_top=region_rt, to_float=True, to_torch=True, to_cuda=R['use_gpu'],
