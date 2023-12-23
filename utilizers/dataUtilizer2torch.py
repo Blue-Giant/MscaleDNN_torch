@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # ---------------------------------------------- 数据集的生成 ---------------------------------------------------
 #  内部生成，方形区域[a,b]^n生成随机数, n代表变量个数，使用随机采样方法
 def rand_it(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-            use_grad2x=False):
+            use_grad=False):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     x_it = (region_b - region_a) * np.random.rand(batch_size, variable_dim) + region_a
@@ -23,14 +23,14 @@ def rand_it(batch_size, variable_dim, region_a, region_b, to_torch=True, to_floa
         if to_cuda:
             x_it = x_it.cuda(device='cuda:' + str(gpu_no))
 
-        x_it.requires_grad = use_grad2x
+        x_it.requires_grad = use_grad
 
     return x_it
 
 
 #  内部生成,矩形区域
 def rand_in_1D(batch_size=100, variable_dim=1, region_a=0.0, region_b=1.0, to_torch=True, to_float=True,
-               to_cuda=False, gpu_no=0, use_grad2x=False, opt2sampler='lhs'):
+               to_cuda=False, gpu_no=0, use_grad=False, opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 1 == int(variable_dim)
@@ -49,14 +49,14 @@ def rand_in_1D(batch_size=100, variable_dim=1, region_a=0.0, region_b=1.0, to_to
         if to_cuda:
             x_it = x_it.cuda(device='cuda:' + str(gpu_no))
 
-        x_it.requires_grad = use_grad2x
+        x_it.requires_grad = use_grad
 
     return x_it
 
 
 #  内部生成, 矩形区域, 使用随机采样方法
 def rand_in_2D(batch_size=100, variable_dim=2, region_left=0.0, region_right=1.0, region_bottom=0.0, region_top=1.0,
-               to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad2x=False, opt2sampler='lhs'):
+               to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad=False, opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 2 == int(variable_dim)
@@ -78,7 +78,7 @@ def rand_in_2D(batch_size=100, variable_dim=2, region_left=0.0, region_right=1.0
         if to_cuda:
             xy_in = xy_in.cuda(device='cuda:' + str(gpu_no))
 
-        xy_in.requires_grad = use_grad2x
+        xy_in.requires_grad = use_grad
 
     return xy_in
 
@@ -86,7 +86,7 @@ def rand_in_2D(batch_size=100, variable_dim=2, region_left=0.0, region_right=1.0
 #  内部生成, 矩形区域, 使用随机采样方法
 def rand_in_3D(batch_size=100, variable_dim=3, region_left=0.0, region_right=1.0, region_behind=0.0, region_front=1.0,
                region_bottom=0.0, region_top=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-               use_grad2x=False, opt2sampler='lhs'):
+               use_grad=False, opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 3 == int(variable_dim)
@@ -110,7 +110,7 @@ def rand_in_3D(batch_size=100, variable_dim=3, region_left=0.0, region_right=1.0
         if to_cuda:
             xyz_in = xyz_in.cuda(device='cuda:' + str(gpu_no))
 
-        xyz_in.requires_grad = use_grad2x
+        xyz_in.requires_grad = use_grad
 
     return xyz_in
 
@@ -118,7 +118,7 @@ def rand_in_3D(batch_size=100, variable_dim=3, region_left=0.0, region_right=1.0
 #  内部生成,矩形区域, 使用随机采样方法
 def rand_in_4D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1.0, region_yleft=0.0, region_yright=1.0,
                region_zleft=0.0, region_zright=1.0, region_sleft=0.0, region_sright=1.0, to_torch=True, to_float=True,
-               to_cuda=False, gpu_no=0, use_grad2x=False, opt2sampler='lhs'):
+               to_cuda=False, gpu_no=0, use_grad=False, opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 4 == int(variable_dim)
@@ -144,7 +144,7 @@ def rand_in_4D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
         if to_cuda:
             xyzs_in = xyzs_in.cuda(device='cuda:' + str(gpu_no))
 
-        xyzs_in.requires_grad = use_grad2x
+        xyzs_in.requires_grad = use_grad
 
     return xyzs_in
 
@@ -152,7 +152,7 @@ def rand_in_4D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
 #  内部生成,矩形区域, 使用随机采样方法
 def rand_in_5D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1.0, region_yleft=0.0, region_yright=1.0,
                region_zleft=0.0, region_zright=1.0, region_sleft=0.0, region_sright=1.0, region_tleft=0.0,
-               region_tright=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad2x=False,
+               region_tright=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad=False,
                opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
@@ -181,7 +181,7 @@ def rand_in_5D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
         if to_cuda:
             xyzst_in = xyzst_in.cuda(device='cuda:' + str(gpu_no))
 
-        xyzst_in.requires_grad = use_grad2x
+        xyzst_in.requires_grad = use_grad
 
     return xyzst_in
 
@@ -191,7 +191,7 @@ def rand_in_8D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
                region_zleft=0.0, region_zright=1.0, region_sleft=0.0, region_sright=1.0, region_tleft=0.0,
                region_tright=1.0, region_pleft=0.0, region_pright=1.0, region_qleft=0.0, region_qright=1.0,
                region_rleft=0.0, region_rright=1.0, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-               use_grad2x=False, opt2sampler='lhs'):
+               use_grad=False, opt2sampler='lhs'):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     assert 8 == int(variable_dim)
@@ -225,14 +225,14 @@ def rand_in_8D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
         if to_cuda:
             xyzstpqr_in = xyzstpqr_in.cuda(device='cuda:' + str(gpu_no))
 
-        xyzstpqr_in.requires_grad = use_grad2x
+        xyzstpqr_in.requires_grad = use_grad
 
     return xyzstpqr_in
 
 
 #  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用Sobol采样方法
-def rand_it_Sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-                   use_grad2x=False):
+def rand_it_Sobol(batch_size=1000, variable_dim=1, region_a=0.0, region_b=1.0, to_torch=True, to_float=True,
+                  to_cuda=False, gpu_no=0, use_grad=False):
     sampler = stqmc.Sobol(d=variable_dim, scramble=True)
     x_it = (region_b - region_a) * sampler.random(n=batch_size) + region_a
     if to_float:
@@ -244,14 +244,14 @@ def rand_it_Sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, t
         if to_cuda:
             x_it = x_it.cuda(device='cuda:' + str(gpu_no))
 
-        x_it.requires_grad = use_grad2x
+        x_it.requires_grad = use_grad
 
     return x_it
 
 
 # 边界生成点
-def rand_bd_1D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-               use_grad2x=False):
+def rand_bd_1D(batch_size=1000, variable_dim=1, region_a=0.0, region_b=1.0, to_torch=True, to_float=True, to_cuda=False,
+               gpu_no=0, use_grad=False):
     # np.asarray 将输入转为矩阵格式。
     # 当输入是列表的时候，更改列表的值并不会影响转化为矩阵的值
     # [0,1] 转换为 矩阵，然后
@@ -275,8 +275,8 @@ def rand_bd_1D(batch_size, variable_dim, region_a, region_b, to_torch=True, to_f
             x_left_bd = x_left_bd.cuda(device='cuda:' + str(gpu_no))
             x_right_bd = x_right_bd.cuda(device='cuda:' + str(gpu_no))
 
-        x_left_bd.requires_grad = use_grad2x
-        x_right_bd.requires_grad = use_grad2x
+        x_left_bd.requires_grad = use_grad
+        x_right_bd.requires_grad = use_grad
 
     return x_left_bd, x_right_bd
 
@@ -336,8 +336,8 @@ def rand_bd_2D(batch_size=1000, variable_dim=2, region_left=0.0, region_right=1.
 
 
 #  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用Sobol采样方法
-def rand_bd_2D_sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
-                     use_grad=False):
+def rand_bd_2D_sobol(batch_size=1000, variable_dim=2, region_a=0.0, region_b=1.0, to_torch=True, to_float=True,
+                     to_cuda=False, gpu_no=0, use_grad=False):
     region_a = float(region_a)
     region_b = float(region_b)
     assert (int(variable_dim) == 2)
