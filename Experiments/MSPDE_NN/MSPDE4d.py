@@ -313,19 +313,19 @@ def solve_Multiscale_PDE(R):
         # size2test = 500
         # test_bach_size = 1000000
         # size2test = 1000
-        test_xyz_bach = dataUtilizer2torch.rand_it(test_bach_size, input_dim, region_lb, region_rt)
-        saveData.save_testData_or_solus2mat(test_xyz_bach, dataName='testXYZ', outPath=R['FolderName'])
+        test_xyzs_bach = dataUtilizer2torch.rand_it(test_bach_size, input_dim, region_lb, region_rt)
+        saveData.save_testData_or_solus2mat(test_xyzs_bach, dataName='testXYZ', outPath=R['FolderName'])
     elif R['testData_model'] == 'loadData':
         test_bach_size = 1600
         size2test = 40
         mat_data_path = 'dataMat_highDim'
-        test_xyz_bach = Load_data2Mat.get_randomData2mat(dim=input_dim, data_path=mat_data_path)
-        saveData.save_testData_or_solus2mat(test_xyz_bach, dataName='testXYZ', outPath=R['FolderName'])
+        test_xyzs_bach = Load_data2Mat.get_randomData2mat(dim=input_dim, data_path=mat_data_path)
+        saveData.save_testData_or_solus2mat(test_xyzs_bach, dataName='testXYZ', outPath=R['FolderName'])
 
-    test_xyz_bach = test_xyz_bach.astype(np.float32)
-    test_xyz_torch = torch.from_numpy(test_xyz_bach)
+    test_xyzs_bach = test_xyzs_bach.astype(np.float32)
+    test_xyzs_torch = torch.from_numpy(test_xyzs_bach)
     if True == R['use_gpu']:
-        test_xyz_torch = test_xyz_torch.cuda(device='cuda:' + str(R['gpuNo']))
+        test_xyzs_torch = test_xyzs_torch.cuda(device='cuda:' + str(R['gpuNo']))
 
     for i_epoch in range(R['max_epoch'] + 1):
         # Generate randomly the training set(random or LatinHypercube) default=lhs
@@ -333,7 +333,7 @@ def solve_Multiscale_PDE(R):
             batch_size=batchsize_it, variable_dim=R['input_dim'], region_xleft=region_lb, region_xright=region_rt,
             region_yleft=region_lb, region_yright=region_rt, region_zleft=region_lb, region_zright=region_rt,
             region_sleft=region_lb, region_sright=region_rt, to_torch=True, to_float=True, to_cuda=R['use_gpu'],
-            gpu_no=R['gpuNo'], use_grad2x=True)
+            gpu_no=R['gpuNo'], use_grad=True)
 
         x00_bd, x01_bd, y00_bd, y01_bd, z00_bd, z01_bd, s00_bd, s01_bd = \
             dataUtilizer2torch. rand_bd_4D(
@@ -361,13 +361,20 @@ def solve_Multiscale_PDE(R):
         if R['PDE_type'] == 'Laplace' or R['PDE_type'] == 'general_Laplace':
             UNN2train, loss_it = mscalednn.loss_in2Laplace(XYZS=xyzs_it_batch, fside=f, loss_type=R['loss_type'])
 
-        loss_bd2left = mscalednn.loss2bd(XYZS_bd=xyz_left_batch, Ubd_exact=u_left)
-        loss_bd2right = mscalednn.loss2bd(XYZS_bd=xyz_right_batch, Ubd_exact=u_right)
-        loss_bd2bottom = mscalednn.loss2bd(XYZS_bd=xyz_bottom_batch, Ubd_exact=u_bottom)
-        loss_bd2top = mscalednn.loss2bd(XYZS_bd=xyz_top_batch, Ubd_exact=u_top)
-        loss_bd2front = mscalednn.loss2bd(XYZS_bd=xyz_front_batch, Ubd_exact=u_front)
-        loss_bd2behind = mscalednn.loss2bd(XYZS_bd=xyz_behind_batch, Ubd_exact=u_behind)
-        loss_bd = loss_bd2left + loss_bd2right + loss_bd2bottom + loss_bd2top + loss_bd2front + loss_bd2behind
+        loss_bd2x_00 = mscalednn.loss2bd(XYZS_bd=x00_bd, Ubd_exact=u_left)
+        loss_bd2x_01 = mscalednn.loss2bd(XYZS_bd=x01_bd, Ubd_exact=u_right)
+
+        loss_bd2y_00 = mscalednn.loss2bd(XYZS_bd=y00_bd, Ubd_exact=u_left)
+        loss_bd2y_01 = mscalednn.loss2bd(XYZS_bd=y01_bd, Ubd_exact=u_right)
+
+        loss_bd2z_00 = mscalednn.loss2bd(XYZS_bd=z00_bd, Ubd_exact=u_left)
+        loss_bd2z_01 = mscalednn.loss2bd(XYZS_bd=z01_bd, Ubd_exact=u_right)
+
+        loss_bd2s_00 = mscalednn.loss2bd(XYZS_bd=s00_bd, Ubd_exact=u_left)
+        loss_bd2s_01 = mscalednn.loss2bd(XYZS_bd=s01_bd, Ubd_exact=u_right)
+
+        loss_bd = loss_bd2x_00 + loss_bd2x_01 + loss_bd2y_00 + loss_bd2y_01 + loss_bd2z_00 + \
+                  loss_bd2z_01 + loss_bd2s_00 + loss_bd2s_01
 
         PWB = penalty2WB * mscalednn.get_regularSum2WB()
 
@@ -382,9 +389,10 @@ def solve_Multiscale_PDE(R):
         optimizer.step()                      # 更新参数Ws和Bs
         scheduler.step()
 
-        Uexact2train = u_true(torch.reshape(xyz_it_batch[:, 0], shape=[-1, 1]),
-                              torch.reshape(xyz_it_batch[:, 1], shape=[-1, 1]),
-                              torch.reshape(xyz_it_batch[:, 2], shape=[-1, 1]))
+        Uexact2train = u_true(torch.reshape(xyzs_it_batch[:, 0], shape=[-1, 1]),
+                              torch.reshape(xyzs_it_batch[:, 1], shape=[-1, 1]),
+                              torch.reshape(xyzs_it_batch[:, 2], shape=[-1, 1]),
+                              torch.reshape(xyzs_it_batch[:, 3], shape=[-1, 1]))
         train_mse = torch.mean(torch.square(UNN2train - Uexact2train))
         train_rel = train_mse / torch.mean(torch.square(Uexact2train))
 
@@ -401,13 +409,14 @@ def solve_Multiscale_PDE(R):
             # ---------------------------   test network ----------------------------------------------
             test_epoch.append(i_epoch / 1000)
             if R['PDE_type'] == 'pLaplace_implicit':
-                UNN2test = mscalednn.evalue_MscaleDNN(XYZS_points=test_xyz_torch)
+                UNN2test = mscalednn.evalue_MscaleDNN(XYZS_points=test_xyzs_torch)
                 Utrue2test = torch.from_numpy(u_true.astype(np.float32))
             else:
-                UNN2test = mscalednn.evalue_MscaleDNN(XYZS_points=test_xyz_torch)
-                Utrue2test = u_true(torch.reshape(test_xyz_torch[:, 0], shape=[-1, 1]),
-                                    torch.reshape(test_xyz_torch[:, 1], shape=[-1, 1]),
-                                    torch.reshape(test_xyz_torch[:, 2], shape=[-1, 1]))
+                UNN2test = mscalednn.evalue_MscaleDNN(XYZS_points=test_xyzs_torch)
+                Utrue2test = u_true(torch.reshape(xyzs_it_batch[:, 0], shape=[-1, 1]),
+                                    torch.reshape(xyzs_it_batch[:, 1], shape=[-1, 1]),
+                                    torch.reshape(xyzs_it_batch[:, 2], shape=[-1, 1]),
+                                    torch.reshape(xyzs_it_batch[:, 3], shape=[-1, 1]))
 
             point_square_error = torch.square(Utrue2test - UNN2test)
             test_mse = torch.mean(point_square_error)
@@ -417,9 +426,9 @@ def solve_Multiscale_PDE(R):
             DNN_tools.print_and_log_test_one_epoch(test_mse.item(), test_rel.item(), log_out=log_fileout)
 
     # ------------------- save the training results into mat file and plot them -------------------------
-    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['activate_func'],
+    saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=R['name2act_hidden'],
                                          outPath=R['FolderName'])
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'],
+    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['name2act_hidden'],
                                     outPath=R['FolderName'])
 
     plotData.plotTrain_loss_1act_func(loss_it_all, lossType='loss_it', seedNo=R['seed'], outPath=R['FolderName'])
@@ -427,9 +436,7 @@ def solve_Multiscale_PDE(R):
                                       yaxis_scale=True)
     plotData.plotTrain_loss_1act_func(loss_all, lossType='loss', seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=R['activate_func'],
-                                    outPath=R['FolderName'])
-    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['activate_func'], seedNo=R['seed'],
+    plotData.plotTrain_MSE_REL_1act_func(train_mse_all, train_rel_all, actName=R['name2act_hidden'], seedNo=R['seed'],
                                          outPath=R['FolderName'], yaxis_scale=True)
 
     # ----------------------  save testing results to mat files, then plot them --------------------------------
@@ -442,21 +449,21 @@ def solve_Multiscale_PDE(R):
         unn2test_numpy = UNN2test.detach().numpy()
         point_square_error_numpy = point_square_error.detach().numpy()
 
-    saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue', actName1=R['activate_func'],
+    saveData.save_2testSolus2mat(utrue2test_numpy, unn2test_numpy, actName='utrue', actName1=R['name2act_hidden'],
                                  outPath=R['FolderName'])
 
     plotData.plot_Hot_solution2test(utrue2test_numpy, size_vec2mat=size2test, actName='Utrue', seedNo=R['seed'],
                                     outPath=R['FolderName'])
-    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['activate_func'],
+    plotData.plot_Hot_solution2test(unn2test_numpy, size_vec2mat=size2test, actName=R['name2act_hidden'],
                                     seedNo=R['seed'], outPath=R['FolderName'])
 
-    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['activate_func'], outPath=R['FolderName'])
-    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['activate_func'],
+    saveData.save_testMSE_REL2mat(test_mse_all, test_rel_all, actName=R['name2act_hidden'], outPath=R['FolderName'])
+    plotData.plotTest_MSE_REL(test_mse_all, test_rel_all, test_epoch, actName=R['name2act_hidden'],
                               seedNo=R['seed'], outPath=R['FolderName'], yaxis_scale=True)
 
-    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['activate_func'], outPath=R['FolderName'])
+    saveData.save_test_point_wise_err2mat(point_square_error_numpy, actName=R['name2act_hidden'], outPath=R['FolderName'])
 
-    plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test, actName=R['activate_func'],
+    plotData.plot_Hot_point_wise_err(point_square_error_numpy, size_vec2mat=size2test, actName=R['name2act_hidden'],
                                      seedNo=R['seed'], outPath=R['FolderName'])
 
 
@@ -520,7 +527,7 @@ if __name__ == "__main__":
         R['max_epoch'] = int(epoch_stop)
 
     # ---------------------------- Setup of multi-scale problem-------------------------------
-    R['input_dim'] = 3  # 输入维数，即问题的维数(几元问题)
+    R['input_dim'] = 4  # 输入维数，即问题的维数(几元问题)
     R['output_dim'] = 1  # 输出维数
 
     if store_file == 'Laplace3D':
