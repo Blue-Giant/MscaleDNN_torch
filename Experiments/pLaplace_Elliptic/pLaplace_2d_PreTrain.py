@@ -362,9 +362,7 @@ def solve_Multiscale_PDE(Rdic=None):
     if Rdic['with_gpu'] is True:
         test_xy_torch = test_xy_bach.cuda(device='cuda:' + str(Rdic['gpuNo']))
 
-
-
-    file_path2model = '../pre_train'
+    file_path2model = Rdic['FolderName']
 
     save_load_NetModule.load_torch_net2file_with_keys(
         path2file=file_path2model, model2net=model, name2model='MscaleDNN',  optimizer=optimizer,
