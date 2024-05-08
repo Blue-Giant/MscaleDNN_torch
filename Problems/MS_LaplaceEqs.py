@@ -23,15 +23,13 @@ def get_infos2pLaplace1D(in_dim=None, out_dim=None, intervalL=0, intervalR=1, in
     elif index2p == 3:
         f = lambda x: abs(2*x-1)*(4*eps+2*eps*torch.cos(2*torch.pi*x/eps)+torch.pi*(1-2*x)*torch.sin(2*torch.pi*x/eps))/(2*eps)
     elif index2p == 4:
-        f = lambda x: ((1 - 2 * x) ** 2) * (2 + np.cos(2 * np.pi * x / eps)) * (
-                6 * eps + 3 * eps * np.cos(2 * np.pi * x / eps) - 2 * np.pi * (2 * x - 1) * np.sin(
-            2 * np.pi * x / eps)) / (
-                              4 * eps)
+        f = lambda x: ((1 - 2 * x) ** 2) * (2 + torch.cos(2 * torch.pi * x / eps)) * (
+                6 * eps + 3 * eps * torch.cos(2 * np.pi * x / eps) - 2 * torch.pi * (2 * x - 1) * torch.sin(
+            2 * torch.pi * x / eps)) / (4 * eps)
     elif index2p == 5:
-        f = lambda x: -1.0 * abs((2 * x - 1) ** 3) * ((2 + np.cos(2 * np.pi * x / eps)) ** 2) * (
-                3 * np.pi * (2 * x - 1) * np.sin(2 * np.pi * x / eps) - 4 * eps * np.cos(
-            2 * np.pi * x / eps) - 8 * eps) / (
-                              8 * eps)
+        f = lambda x: -1.0 * abs((2 * x - 1) ** 3) * ((2 + torch.cos(2 * torch.pi * x / eps)) ** 2) * (
+                3 * torch.pi * (2 * x - 1) * torch.sin(2 * torch.pi * x / eps) - 4 * eps * torch.cos(
+            2 * torch.pi * x / eps) - 8 * eps) / (8 * eps)
     elif index2p == 8:
         f = lambda x: ((1 - 2 * x) ** 6) * ((2 + np.cos(2 * np.pi * x / eps)) ** 5) * (
                 7 * eps * np.cos(2 * np.pi * x / eps) + 2 * (
