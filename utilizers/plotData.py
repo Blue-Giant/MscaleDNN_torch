@@ -767,3 +767,47 @@ def plot_Hot_point_wise_err(point_wise_err, size_vec2mat=20, actName=None, seedN
     DNN_tools.mySaveFig(plt, fntmp, ax=ax, isax=1, iseps=0)
 
 
+def plot_scatter_pointwise_error2test(points_err2test=None, test_xy_batch=None, actName=None,
+                                      seedNo=1000, outPath=None):
+    test_x_bach = np.reshape(test_xy_batch[:, 0], newshape=[-1, 1])
+    test_y_bach = np.reshape(test_xy_batch[:, 1], newshape=[-1, 1])
+
+    # 绘制解的3D散点图
+    fig = plt.figure(figsize=(10, 10))
+    ax = Axes3D(fig)
+    ax.scatter(test_x_bach, test_y_bach, points_err2test, c='b', label=actName)
+
+    # 绘制图例
+    ax.legend(loc='best')
+    # 添加坐标轴(顺序是X，Y, Z)
+    ax.set_xlabel('X', fontdict={'size': 15, 'color': 'red'})
+    ax.set_ylabel('Y', fontdict={'size': 15, 'color': 'red'})
+    ax.set_zlabel('error', fontdict={'size': 15, 'color': 'red'})
+
+    # plt.title('solution', fontsize=15)
+    fntmp = '%s/PointWiseErr_%s_%s' % (outPath, actName, seedNo)
+    DNN_tools.mySaveFig(plt, fntmp, ax=ax, isax=1, iseps=0)
+
+
+def plot_scatter_solu2preTrain(solu2test=None, test_xy_batch=None, actName=None, auxName=1000, outPath=None):
+    test_x_bach = np.reshape(test_xy_batch[:, 0], newshape=[-1, 1])
+    test_y_bach = np.reshape(test_xy_batch[:, 1], newshape=[-1, 1])
+
+    # 绘制解的3D散点图
+    fig = plt.figure(figsize=(10, 10))
+    ax = Axes3D(fig)
+    ax.scatter(test_x_bach, test_y_bach, solu2test, c='b', label=actName)
+
+    # 绘制图例
+    ax.legend(loc='best')
+    # 添加坐标轴(顺序是X，Y, Z)
+    ax.set_xlabel('X', fontdict={'size': 15, 'color': 'red'})
+    ax.set_ylabel('Y', fontdict={'size': 15, 'color': 'red'})
+    ax.set_zlabel('u', fontdict={'size': 15, 'color': 'red'})
+
+    # plt.title('solution', fontsize=15)
+    fntmp = '%s/solu2%s_%s' % (outPath, actName, auxName)
+    DNN_tools.mySaveFig(plt, fntmp, ax=ax, isax=1, iseps=0)
+
+
+

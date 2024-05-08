@@ -116,11 +116,10 @@ def save_testData_or_solus2mat(data, dataName=None, outPath=None):
 
 
 # 合并保存数据
-def save_2testSolus2mat(exact_solution, dnn_solution, actName=None, actName1=None, outPath=None):
+def save_2testSolus2mat(exact_solution, dnn_solution, name2exact=None, name2dnn_solu=None, outPath=None):
     outFile2data = '%s/test_solus.mat' % (outPath)
-    if str.lower(actName) == 'utrue':
-        key2mat_1 = 'Utrue'
-    key2mat_2 = 'U%s' % (actName1)
+    key2mat_1 = '%s' % (name2exact)
+    key2mat_2 = '%s' % (name2dnn_solu)
     scio.savemat(outFile2data, {key2mat_1: exact_solution, key2mat_2: dnn_solution})
 
 

@@ -27,31 +27,21 @@ def dictionary_out2file(R_dic, log_fileout):
         DNN_tools.log_string('The epsilon to pLaplace operator: %f\n' % (R_dic['epsilon']), log_fileout)
 
     # -----------------------------------------------------------------------------------------------------------------
-    DNN_tools.log_string('Network model of solving problem: %s\n' % str(R_dic['model2NN']), log_fileout)
-    if R_dic['model2NN'] == 'DNN_FourierBase' or R_dic['model2NN'] == 'Fourier_DNN':
-        DNN_tools.log_string('Activate function for NN-input: %s\n' % '[Sin;Cos]', log_fileout)
-    else:
-        DNN_tools.log_string('Activate function for NN-input: %s\n' % str(R_dic['name2act_in']), log_fileout)
+    DNN_tools.log_string('Network model of solving problem: %s\n' % str(R_dic['model_name']), log_fileout)
+    DNN_tools.log_string('Activate function for NN-input: %s\n' % str(R_dic['name2act_in']), log_fileout)
     DNN_tools.log_string('Activate function for NN-hidden: %s\n' % str(R_dic['name2act_hidden']), log_fileout)
     DNN_tools.log_string('Activate function for NN-output: %s\n' % str(R_dic['name2act_out']), log_fileout)
     DNN_tools.log_string('hidden layer:%s\n' % str(R_dic['hidden_layers']), log_fileout)
-    if R_dic['model2NN'] != 'DNN':
+
+    if R_dic['model_name'] != 'DNN':
         DNN_tools.log_string('The frequency to neural network: %s\n' % (R_dic['freq']), log_fileout)
 
-    if R_dic['model2NN'] == 'DNN_FourierBase' or R_dic['model2NN'] == 'Fourier_DNN':
-        DNN_tools.log_string('The scale-factor to fourier basis: %s\n' % (R_dic['sfourier']), log_fileout)
+    DNN_tools.log_string('The scale-factor to fourier basis: %s\n' % (R_dic['sfourier']), log_fileout)
 
     if R_dic['loss_type'] == 'variational_loss':
         DNN_tools.log_string('Loss function: variational loss\n', log_fileout)
     else:
         DNN_tools.log_string('Loss function: L2 loss\n', log_fileout)
-
-    if (R_dic['train_model']) == 'union_training':
-        DNN_tools.log_string('The model for training loss: %s\n' % 'total loss', log_fileout)
-    elif (R_dic['train_model']) == 'group3_training':
-        DNN_tools.log_string('The model for training loss: %s\n' % 'total loss + loss_it + loss_bd', log_fileout)
-    elif (R_dic['train_model']) == 'group2_training':
-        DNN_tools.log_string('The model for training loss: %s\n' % 'total loss + loss_bd', log_fileout)
 
     if (R_dic['optimizer_name']).title() == 'Adam':
         DNN_tools.log_string('optimizer:%s\n' % str(R_dic['optimizer_name']), log_fileout)
@@ -60,7 +50,7 @@ def dictionary_out2file(R_dic, log_fileout):
 
     DNN_tools.log_string('Init learning rate: %s\n' % str(R_dic['learning_rate']), log_fileout)
 
-    DNN_tools.log_string('Decay to learning rate: %s\n' % str(R_dic['learning_rate_decay']), log_fileout)
+    DNN_tools.log_string('The scheduler of learning rate: %s\n' % str(R_dic['scheduler2lr']), log_fileout)
 
     # -----------------------------------------------------------------------------------------------------------------
     DNN_tools.log_string('Batch-size 2 interior: %s\n' % str(R_dic['batch_size2interior']), log_fileout)

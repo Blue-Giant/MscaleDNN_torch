@@ -231,8 +231,8 @@ def rand_in_8D(batch_size=100, variable_dim=3, region_xleft=0.0, region_xright=1
 
 
 #  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用Sobol采样方法
-def rand_it_Sobol(batch_size=1000, variable_dim=1, region_a=0.0, region_b=1.0, to_torch=True, to_float=True,
-                  to_cuda=False, gpu_no=0, use_grad=False):
+def rand_it_Sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False, gpu_no=0,
+                   use_grad2x=False):
     sampler = stqmc.Sobol(d=variable_dim, scramble=True)
     x_it = (region_b - region_a) * sampler.random(n=batch_size) + region_a
     if to_float:
@@ -244,14 +244,14 @@ def rand_it_Sobol(batch_size=1000, variable_dim=1, region_a=0.0, region_b=1.0, t
         if to_cuda:
             x_it = x_it.cuda(device='cuda:' + str(gpu_no))
 
-        x_it.requires_grad = use_grad
+        x_it.requires_grad = use_grad2x
 
     return x_it
 
 
 # 边界生成点
-def rand_bd_1D(batch_size=1000, variable_dim=1, region_a=0.0, region_b=1.0, to_torch=True, to_float=True, to_cuda=False,
-               gpu_no=0, use_grad=False):
+def rand_bd_1D(batch_size=1000, variable_dim=1, region_a=0.0, region_b=1.0, to_torch=True, to_float=True,
+               to_cuda=False, gpu_no=0, use_grad=False):
     # np.asarray 将输入转为矩阵格式。
     # 当输入是列表的时候，更改列表的值并不会影响转化为矩阵的值
     # [0,1] 转换为 矩阵，然后
@@ -336,8 +336,8 @@ def rand_bd_2D(batch_size=1000, variable_dim=2, region_left=0.0, region_right=1.
 
 
 #  内部生成, 方形区域[a,b]^n生成随机数, n代表变量个数. 使用Sobol采样方法
-def rand_bd_2D_sobol(batch_size=1000, variable_dim=2, region_a=0.0, region_b=1.0, to_torch=True, to_float=True,
-                     to_cuda=False, gpu_no=0, use_grad=False):
+def rand_bd_2D_sobol(batch_size, variable_dim, region_a, region_b, to_torch=True, to_float=True, to_cuda=False,
+                     gpu_no=0, use_grad=False):
     region_a = float(region_a)
     region_b = float(region_b)
     assert (int(variable_dim) == 2)
