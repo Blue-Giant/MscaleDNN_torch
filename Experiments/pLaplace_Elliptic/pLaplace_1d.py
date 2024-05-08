@@ -376,7 +376,7 @@ def solve_Multiscale_PDE(Rdic=None):
 
             point_square_error = torch.square(Uexact2test - unn2test)
             test_mse = torch.mean(point_square_error)
-            test_rel = test_mse/torch.mean(torch.mul(Uexact2test, Uexact2test))
+            test_rel = torch.sqrt(test_mse/torch.mean(torch.mul(Uexact2test, Uexact2test)))
 
             test_mse_all.append(test_mse.item())
             test_rel_all.append(test_rel.item())
