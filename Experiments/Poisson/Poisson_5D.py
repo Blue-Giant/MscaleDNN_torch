@@ -95,7 +95,7 @@ class PDE_DNN(tn.Module):
         else:
             self.opt2device = 'cpu'
 
-    def loss_in2Laplace(self, XYZST=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', relaxation2lncosh=0.1):
+    def loss2in(self, XYZST=None, fside=None, if_lambda2fside=True, loss_type='ritz_loss', relaxation2lncosh=0.1):
         """
         Calculating the loss of Laplace equation (*) in the interior points for given domain
         -Laplace U = f,  in Omega
@@ -331,10 +331,13 @@ def Solve_PDE(Rdic=None):
     # size2test = 500
     # test_bach_size = 1000000
     # size2test = 1000
-    test_xyzst_torch = dataUtilizer2torch.rand_it(
+    test_xyzst_bach = dataUtilizer2torch.rand_it(
         batch_size=test_bach_size, variable_dim=input_dim, region_a=region_a, region_b=region_b, to_torch=True,
-        to_float=True, to_cuda=Rdic['with_gpu'], gpu_no=Rdic['gpuNo'], use_grad=False)
-    saveData.save_testData_or_solus2mat(test_xyzst_torch, dataName='testXYZST', outPath=Rdic['FolderName'])
+        to_float=True, to_cuda=False, gpu_no=Rdic['gpuNo'], use_grad=False)
+    saveData.save_testData_or_solus2mat(test_xyzst_bach, dataName='testXYZST', outPath=Rdic['FolderName'])
+
+    if Rdic['with_gpu'] is True:
+        test_xyzst_torch = test_xyzst_bach.cuda(device='cuda:' + str(Rdic['gpuNo']))
 
     Utrue2test = u_true(torch.reshape(test_xyzst_torch[:, 0], shape=[-1, 1]),
                         torch.reshape(test_xyzst_torch[:, 1], shape=[-1, 1]),
@@ -347,12 +350,12 @@ def Solve_PDE(Rdic=None):
             batch_size=batchsize_in, variable_dim=Rdic['input_dim'], region_xleft=region_a, region_xright=region_b,
             region_yleft=region_a, region_yright=region_b, region_zleft=region_a, region_zright=region_b,
             region_sleft=region_a, region_sright=region_b, region_tleft=region_a, region_tright=region_b,
-            to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad=False, opt2sampler='lhs')
+            to_torch=True, to_float=True, to_cuda=Rdic['with_gpu'], gpu_no=Rdic['gpuNo'], use_grad=True)
         x00_bd, x01_bd, y00_bd, y01_bd, z00_bd, z01_bd, s00_bd, s01_bd, t00_bd, t01_bd = dataUtilizer2torch.rand_bd_5D(
             batch_size=batchsize_bd, variable_dim=Rdic['input_dim'], region_xleft=region_a, region_xright=region_b,
             region_yleft=region_a, region_yright=region_b, region_zleft=region_a, region_zright=region_b,
             region_sleft=region_a, region_sright=region_b, region_tleft=region_a, region_tright=region_b,
-            to_torch=True, to_float=True, to_cuda=False, gpu_no=0, use_grad=False, opt2sampler='lhs')
+            to_torch=True, to_float=True, to_cuda=Rdic['with_gpu'], gpu_no=Rdic['gpuNo'])
 
         if Rdic['activate_penalty2bd_increase'] == 1:
             if i_epoch < int(Rdic['max_epoch'] / 10):
@@ -370,7 +373,7 @@ def Solve_PDE(Rdic=None):
         else:
             temp_penalty_bd = bd_penalty_init
 
-        UNN2train, loss_it = model.loss2in(XYZ=xyzst_it_batch, fside=f_side, loss_type=Rdic['loss_type'],
+        UNN2train, loss_it = model.loss2in(XYZST=xyzst_it_batch, fside=f_side, loss_type=Rdic['loss_type'],
                                            relaxation2lncosh=Rdic['scale2lncosh'])
 
         loss_bd00 = model.loss2bd(XYZST_bd=x00_bd, Ubd_exact=u00, loss_type=Rdic['loss_type2bd'],
@@ -595,7 +598,7 @@ if __name__ == "__main__":
     R['init_boundary_penalty'] = 20  # Regularization parameter for boundary conditions
 
     # 网络的频率范围设置
-    R['freqs'] = np.arange(1, 100 - 1)
+    R['freq'] = np.arange(1, 30)
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
     # R['model_name'] = 'DNN'
