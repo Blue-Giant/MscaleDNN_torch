@@ -96,7 +96,7 @@ class MscaleDNN(tn.Module):
             self.opt2device = 'cpu'
 
     def loss_in2pLaplace(self, X=None, fside=None, if_lambda2fside=True, aside=None, if_lambda2aside=True,
-                         loss_type='ritz_loss', relaxation2lncosh=0.5):
+                         loss_type='ritz_loss', p_index=2.0, relaxation2lncosh=0.5):
         """
         Calculating the loss of pLaplace equation (*) in the interior points for given domain, in this case p==2
         -div[a(x)grad U(x)] = f(x),   in Omega
@@ -137,11 +137,15 @@ class MscaleDNN(tn.Module):
                                         create_graph=True, retain_graph=True)
         dUNN = torch.reshape(grad2UNNx[0], shape=[-1, 1])
 
+        if int(p_index) > 2:
+            assert str.lower(loss_type) == 'ritz_loss'
+
         if str.lower(loss_type) == 'ritz_loss':
             # calculating the loss
-            dUNN_2Norm = torch.reshape(torch.sum(torch.mul(dUNN, dUNN), dim=-1), shape=[-1, 1])  # 按行求和
-            AdUNN_2Norm = torch.multiply(aeps_side, dUNN_2Norm)
-            loss_it_ritz = (1.0 / 2) * AdUNN_2Norm - torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
+            dUNN_Norm = torch.abs(dUNN)  # 按行求和
+            dUNN_pNorm = torch.pow(dUNN_Norm, int(p_index))
+            AdUNN_2Norm = torch.multiply(aeps_side, dUNN_pNorm)
+            loss_it_ritz = (1.0 / p_index) * AdUNN_2Norm - torch.mul(torch.reshape(force_side, shape=[-1, 1]), UNN)
             loss2func = torch.mean(loss_it_ritz)
         elif str.lower(loss_type) == 'l2_loss':
             grad2dUNNx = torch.autograd.grad(dUNN, X, grad_outputs=torch.ones_like(X),
@@ -333,7 +337,7 @@ def solve_Multiscale_PDE(Rdic=None):
 
         UNN2train, loss_it = model.loss_in2pLaplace(
             X=x_it_batch, fside=f, if_lambda2fside=True, aside=A_eps, if_lambda2aside=True,
-            loss_type=Rdic['loss_type'], relaxation2lncosh=Rdic['scale2lncosh'])
+            loss_type=Rdic['loss_type'], p_index=p_index, relaxation2lncosh=Rdic['scale2lncosh'])
 
         loss_bd2left = model.loss2bd(X_bd=xl_bd_batch, Ubd_exact=uleft, if_lambda2Ubd=True,
                                      loss_type=Rdic['loss_type2bd'], relaxation2lncosh=Rdic['scale2lncosh'])
