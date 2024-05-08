@@ -90,35 +90,48 @@ def get_infos2Laplace_2D(input_dim=1, out_dim=1, left_bottom=0.0, right_top=1.0,
 
 
 # 偏微分方程的一些信息:边界条件，初始条件，真解，右端项函数
-def get_infos2Laplace_3D(input_dim=1, out_dim=1, intervalL=0.0, intervalR=1.0, equa_name=None):
+def get_infos2PDE_3D(input_dim=1, out_dim=1, intervalL=0.0, intervalR=1.0, equa_name=None):
     if equa_name == 'PDE1':
         # -Laplace U = f
-        # u=sin(pi*x)*sin(pi*y)*sin(pi*z), f=-pi*pi*sin(pi*x)*sin(pi*y)*sin(pi*z)
-        fside = lambda x, y, z: -(torch.pi)*(torch.pi)*torch.sin(torch.pi*x)
+        # u=sin(pi*x)*sin(pi*y)*sin(pi*z), f=3pi*pi*sin(pi*x)*sin(pi*y)*sin(pi*z)
+        fside = lambda x, y, z: 3.0*(torch.pi)*(torch.pi)*torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
         utrue = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_00 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_01 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_10 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_11 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_20 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-        u_21 = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
-    return fside, utrue, u_00, u_01, u_10, u_11, u_20, u_21
+        u_left = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_right = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_bottom = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_top = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_behind = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        u_front = lambda x, y, z: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)
+        return fside, utrue, u_left, u_right, u_behind, u_front, u_bottom, u_top
+    elif equa_name == 'PDE2':
+        # -Laplace U = f
+        # u=exp(x+y+z), f=-3exp(x+y+z)
+        fside = lambda x, y, z: -3.0 * torch.exp(x) * torch.exp(y) * torch.exp(z)
+        utrue = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        u_left = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        u_right = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        u_bottom = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        u_top = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        u_behind = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        u_front = lambda x, y, z: torch.exp(x) * torch.exp(y) * torch.exp(z)
+        return fside, utrue, u_left, u_right, u_behind, u_front, u_bottom, u_top
 
 
 # 偏微分方程的一些信息:边界条件，初始条件，真解，右端项函数
-def get_infos2Laplace_5D(input_dim=1, out_dim=1, intervalL=0.0, intervalR=1.0, equa_name=None):
-    if equa_name == 'PDE1':
-        # u=sin(pi*x), f=-pi*pi*sin(pi*x)
-        fside = lambda x, y, z, s, t: -(torch.pi)*(torch.pi)*torch.sin(torch.pi*x)
-        utrue = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
-        u_00 = lambda x, y, z, s, t: torch.sin(torch.pi*intervalL)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
-        u_01 = lambda x, y, z, s, t: torch.sin(torch.pi*intervalR)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
-        u_10 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * intervalL) * torch.sin(torch.pi * z) * torch.sin(torch.pi * s) * torch.sin(torch.pi * t)
-        u_11 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * intervalR) * torch.sin(torch.pi * z) * torch.sin(torch.pi * s) * torch.sin(torch.pi * t)
-        u_20 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * y) * torch.sin(torch.pi * intervalL) * torch.sin(torch.pi * s) * torch.sin(torch.pi * t)
-        u_21 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * y) * torch.sin(torch.pi * intervalR) * torch.sin(torch.pi * s) * torch.sin(torch.pi * t)
-        u_30 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * y) * torch.sin(torch.pi * z) * torch.sin(torch.pi * intervalL) * torch.sin(torch.pi * t)
-        u_31 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * y) * torch.sin(torch.pi * z) * torch.sin(torch.pi * intervalR) * torch.sin(torch.pi * t)
-        u_40 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * y) * torch.sin(torch.pi * z) * torch.sin(torch.pi * s) * torch.sin(torch.pi * intervalL)
-        u_41 = lambda x, y, z, s, t: torch.sin(torch.pi * x) * torch.sin(torch.pi * y) * torch.sin(torch.pi * z) * torch.sin(torch.pi * s) * torch.sin(torch.pi * intervalR)
-    return fside, utrue, u_00, u_01, u_10, u_11, u_20, u_21, u_30, u_31, u_40, u_41
+def get_infos2Laplace_5D(equa_name=None):
+    # -Laplace U = f
+    # u=sin(pi*x)*sin(pi*y)*sin(pi*z), f=5pi*pi*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    fside = lambda x, y, z, s, t: 5.0*(torch.pi)*(torch.pi)*torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*\
+                                  torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    utrue = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u00 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u01 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u10 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u11 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u20= lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u21 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u30 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u31= lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u40 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    u41 = lambda x, y, z, s, t: torch.sin(torch.pi*x)*torch.sin(torch.pi*y)*torch.sin(torch.pi*z)*torch.sin(torch.pi*s)*torch.sin(torch.pi*t)
+    return fside, utrue, u00, u01, u10, u11, u20, u21, u30, u31, u40, u41
