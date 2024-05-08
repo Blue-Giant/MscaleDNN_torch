@@ -68,6 +68,11 @@ class MscaleDNN(tn.Module):
                 indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
                 actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
                 repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU)
+        elif 'FOURIER_SUB_DNN' == str.upper(Model_name):
+            self.DNN = DNN_base.Fourier_SubNets3D(
+                indim=input_dim, outdim=out_dim, hidden_units=hidden_layer, name2Model=Model_name,
+                actName2in=name2actIn, actName=name2actHidden, actName2out=name2actOut, type2float=type2numeric,
+                repeat_Highfreq=repeat_highFreq, to_gpu=use_gpu, gpu_no=No2GPU, num2subnets=len(scales))
 
         self.input_dim = input_dim
         self.out_dim = out_dim
@@ -94,7 +99,7 @@ class MscaleDNN(tn.Module):
             self.opt2device = 'cpu'
 
     def loss_in2pLaplace(self, XY=None, fside=None, if_lambda2fside=True, aside=None, if_lambda2aside=True, p_index=2,
-                         loss_type='ritz_loss', scale2lncosh=0.1):
+                         loss_type='ritz_loss', relaxation2lncosh=0.1):
         """
         Calculating the loss of pLaplace equation with p=2 in the interior points for given domain
         -div[a(x)grad U(x)] = f(x),  in Omega
@@ -106,7 +111,7 @@ class MscaleDNN(tn.Module):
              aside:           the multi-scale coefficient       -----  float, shape=[B,1]
              if_lambda2aside: the multi-scale coefficient is a lambda function or an array  ------ Bool
              loss_type:       the type of loss function(Ritz, L2, Lncosh)      ------ string
-             scale2lncosh:    if the loss is lncosh, using it                  ------- float
+             relaxation2lncosh:    if the loss is lncosh, using it                  ------- float
         return:
              UNN:             the output data
              loss_in:         the output loss in the interior points for given domain
@@ -194,7 +199,7 @@ class MscaleDNN(tn.Module):
             Ubd_exact:     the exact function or array for boundary condition
             if_lambda2Ubd: the Ubd_exact is a lambda function or an array  ------ Bool
             loss_type:     the type of loss function(Ritz, L2, Lncosh)      ------ string
-            scale2lncosh:  if the loss is lncosh, using it                  ------- float
+            relaxation2lncosh:  if the loss is lncosh, using it                  ------- float
         return:
             loss_bd: the output loss on the boundary points for given boundary
         """
@@ -333,7 +338,10 @@ def solve_Multiscale_PDE(Rdic=None):
         test_xy_bach = dataUtilizer2torch.rand_it(szie2test_data, Rdic['input_dim'], region_lb, region_rt)
         saveData.save_testData_or_solus2mat(test_xy_bach, dataName='testXY', outPath=R['FolderName'])
     elif str.lower(Rdic['testData_model']) == 'load_regular_domain_data':
-        mat_data_path = '../data2RegularDomain_2D/gene_mesh01/'
+        if R['equa_name'] == 'multi_scale2D_5':
+            mat_data_path = '../data2RegularDomain_2D/gene_mesh01/'
+        else:
+            mat_data_path = '../data2RegularDomain_2D/gene_mesh11/'
         test_xy_bach = Load_data2Mat.load_MatData2Mesh_2D(
             path2file=mat_data_path, num2mesh=7, to_float=True, float_type=np.float32, to_torch=True,
             to_cuda=False, gpu_no=R['gpuNo'])
@@ -341,7 +349,7 @@ def solve_Multiscale_PDE(Rdic=None):
         szie2test_data = np.size(test_xy_bach, axis=0)
         size2test = int(np.sqrt(szie2test_data))
     elif str.lower(Rdic['testData_model']) == 'load_irregular_domain_data':
-        mat_data_path = '../data2IrregularDomain_2D/Hexagon_domain01/'
+        mat_data_path = '../data2IrregularDomain_2D/Hexagon_domain11/'
         test_xy_bach = Load_data2Mat.load_MatData2IrregularDomain_2D(
             path2file=mat_data_path, to_float=True, to_torch=True,  to_cuda=False, gpu_no=R['gpuNo'])
         saveData.save_testData_or_solus2mat(test_xy_bach, dataName='testXY', outPath=R['FolderName'])
@@ -364,6 +372,9 @@ def solve_Multiscale_PDE(Rdic=None):
     else:
         Utrue2test = u_true(torch.reshape(test_xy_torch[:, 0], shape=[-1, 1]),
                             torch.reshape(test_xy_torch[:, 1], shape=[-1, 1]))
+
+    if Rdic['with_gpu'] is True:
+        Utrue2test = Utrue2test.cuda(device='cuda:' + str(Rdic['gpuNo']))
 
     # Training our network
     t0 = time.time()
@@ -397,7 +408,7 @@ def solve_Multiscale_PDE(Rdic=None):
         # obtaining the governed equation loss in interior
         UNN2train, loss_it = model.loss_in2pLaplace(
             XY=xy_it_batch, fside=f, if_lambda2fside=True, aside=A_eps, if_lambda2aside=True,
-            loss_type=Rdic['loss_type'], scale2lncosh=Rdic['scale2lncosh'])
+            loss_type=Rdic['loss_type'], relaxation2lncosh=Rdic['scale2lncosh'])
 
         # obtaining the loss on boundaries
         loss_bd2left = model.loss2bd(XY_bd=xl_bd_batch, Ubd_exact=u_left, loss_type=Rdic['loss_type2bd'],
@@ -456,9 +467,6 @@ def solve_Multiscale_PDE(Rdic=None):
     # ------------------- save the training results into mat file and plot them -------------------------
     saveData.save_trainLoss2mat_1actFunc(loss_it_all, loss_bd_all, loss_all, actName=Rdic['name2act_hidden'],
                                          outPath=Rdic['FolderName'])
-    saveData.save_train_MSE_REL2mat(train_mse_all, train_rel_all, actName=Rdic['name2act_hidden'],
-                                    outPath=Rdic['FolderName'])
-
     plotData.plotTrain_loss_1act_func(loss_it_all, lossType='loss_in', seedNo=Rdic['seed'], outPath=Rdic['FolderName'])
     plotData.plotTrain_loss_1act_func(loss_bd_all, lossType='loss_bd', seedNo=Rdic['seed'], outPath=Rdic['FolderName'],
                                       yaxis_scale=True)
@@ -559,7 +567,6 @@ if __name__ == "__main__":
     R['input_dim'] = 2  # 输入维数，即问题的维数(几元问题)
     R['output_dim'] = 1  # 输出维数
 
-
     R['PDE_type'] = 'pLaplace_implicit'
     # R['equa_name'] = 'multi_scale2D_1'      # p=2 区域为 [-1,1]X[-1,1]
     # R['equa_name'] = 'multi_scale2D_2'      # p=2 区域为 [-1,1]X[-1,1]
@@ -656,8 +663,8 @@ if __name__ == "__main__":
     R['init_boundary_penalty'] = 100                      # Regularization parameter for boundary conditions
 
     # 网络的频率范围设置
-    # R['freq'] = np.arange(1, 30 - 1))
-    R['freq'] = np.arange(1, 100 - 1)
+    # R['freq'] = np.arange(1, 30)
+    R['freq'] = np.arange(1, 100)
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
     # R['model_name'] = 'DNN'
@@ -671,7 +678,7 @@ if __name__ == "__main__":
         R['hidden_layers'] = (225, 250, 200, 200, 150)  # 2*225+450*250+250*200+200*200+200*150+150*1=233100
         # R['hidden_layers'] = (50, 80, 60, 60, 40)
     elif R['model_name'] == 'Fourier_Sub_DNN':
-        R['hidden_layers'] = (20, 15, 15, 10, 10)
+        R['hidden_layers'] = (30, 20, 20, 10, 10)
     else:
         # R['hidden_layers'] = (100, 80, 80, 60, 40, 40)
         # R['hidden_layers'] = (200, 100, 80, 50, 30)
